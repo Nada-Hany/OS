@@ -1,0 +1,3 @@
+/bochs.log
+# Ignore the obj folder
+obj/
