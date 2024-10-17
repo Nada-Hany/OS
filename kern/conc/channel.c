@@ -48,6 +48,9 @@ void wakeup_one(struct Channel *chan)
 	struct spinlock* queueGuard;
 	init_spinlock(queueGuard, "queueGuard");
 
+	// making sure there's blocked processes
+	if(chan->queue.size != 0){
+
 	// get the first process in the blocked queue and change its state to ready
 	struct Env* currentProcess = chan->queue.lh_first();
 	currentProcess->env_status = 1;
@@ -56,6 +59,8 @@ void wakeup_one(struct Channel *chan)
 	acquire_spinlock(queueGuard);
 	LIST_REMOVE(&(chan->queue), currentProcess);
 	release_spinlock(queueGuard);
+
+	}
 
 
 	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one.
