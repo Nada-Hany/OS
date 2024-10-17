@@ -112,10 +112,16 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 //==================================
 void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 {
-	//TODO: [PROJECT'24.MS1 - #05] [3] DYNAMIC ALLOCATOR - set_block_data
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("set_block_data is not implemented yet");
-	//Your Code is Here...
+	uint32 SizeandFlag = totalSize;
+	if (isAllocated) SizeandFlag++;
+
+	char *startptr = (char *) va - 4;
+
+	uint32* header = (uint32*)startptr;
+	*header = SizeandFlag;
+
+	uint32* footer = (uint32*)(startptr+totalSize-4);
+	*footer = SizeandFlag;
 }
 
 
