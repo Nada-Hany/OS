@@ -49,19 +49,19 @@ void wakeup_one(struct Channel *chan)
 	init_spinlock(queueGuard, "queueGuard");
 
 	// making sure there's blocked processes
-	if(chan->queue.size != 0){
+	if(queue_size(chan->queue)!=0){
 
-	// get the first process in the blocked queue and change its state to ready
-	struct Env* currentProcess = chan->queue.lh_first();
-	currentProcess->env_status = 1;
+		acquire_spinlock(queueGuard);
+		// remove the first process in the blocked queue
+		struct Env* currentProcess = dequeue(chan->queue);
+		// change its state to ready
+		currentProcess->env_status = 1;
+		// add it to the ready queue
+		sched_insert_ready0(currentProcess);
 
-	// remove it from blocked processes queue while making it critical section.
-	acquire_spinlock(queueGuard);
-	LIST_REMOVE(&(chan->queue), currentProcess);
-	release_spinlock(queueGuard);
+		release_spinlock(queueGuard);
 
 	}
-
 
 	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one.
 }
@@ -76,10 +76,12 @@ void wakeup_one(struct Channel *chan)
 
 void wakeup_all(struct Channel *chan)
 {
+	struct Env *element;
+	LIST_FOREACH(element, &(chan->queue))
+	{
+		wakeup_one(chan);
+	}
 	//TODO: [PROJECT'24.MS1 - #12] [4] LOCKS - wakeup_all
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("wakeup_all is not implemented yet");
-	//Your Code is Here...
 
 }
 
