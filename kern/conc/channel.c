@@ -42,12 +42,23 @@ void sleep(struct Channel *chan, struct spinlock* lk)
 // The qlock must be held.
 // Ref: xv6-x86 OS code
 // chan MUST be of type "struct Env_Queue" to hold the blocked processes
+
 void wakeup_one(struct Channel *chan)
 {
-	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("wakeup_one is not implemented yet");
-	//Your Code is Here...
+	struct spinlock* queueGuard;
+	init_spinlock(queueGuard, "queueGuard");
+
+	// get the first process in the blocked queue and change its state to ready
+	struct Env* currentProcess = chan->queue.lh_first();
+	currentProcess->env_status = 1;
+
+	// remove it from blocked processes queue while making it critical section.
+	acquire_spinlock(queueGuard);
+	LIST_REMOVE(&(chan->queue), currentProcess);
+	release_spinlock(queueGuard);
+
+
+	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one.
 }
 
 //====================================================
