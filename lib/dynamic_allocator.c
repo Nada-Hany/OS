@@ -110,16 +110,19 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 		uint32 daEnd=daStart+initSizeOfAllocatedSpace-4;
 		uint32 *endptr=(uint32 *)daEnd;
 		*endptr=1;
+
 		LIST_INIT(&freeBlocksList);
 		set_block_data((void*)daStart+8, initSizeOfAllocatedSpace-8, 0);
+
 }
 //==================================
 // [2] SET BLOCK HEADER & FOOTER:
 //==================================
 void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 {
-	uint32 SizeandFlag = totalSize;
+	uint32 SizeandFlag = (totalSize);
 	if (isAllocated) SizeandFlag++;
+
 
 	char *startptr = (char *) va-sizeof(uint32);
 
@@ -127,6 +130,7 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 	*header = SizeandFlag;
 
 	uint32* footer = (uint32*)(startptr+totalSize-sizeof(uint32));
+
 	*footer = SizeandFlag;
 
 	if (!isAllocated)
