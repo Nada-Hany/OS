@@ -1,3 +1,4 @@
 /bochs.log
 # Ignore the obj folder
 obj/
+.settings/language.settings.xml
