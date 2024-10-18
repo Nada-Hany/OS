@@ -28,10 +28,23 @@ void init_channel(struct Channel *chan, char *name)
 // Ref: xv6-x86 OS code
 void sleep(struct Channel *chan, struct spinlock* lk)
 {
+//	acquire_spinlock(lk);
+	release_spinlock(lk);
+
+	struct spinlock* queueGuard;
+	init_spinlock(queueGuard, "queueGuard");
+
+	struct Env* currentProcess = get_cpu_proc();
+
+	// block the running process on the given channel
+	currentProcess->env_status = ENV_BLOCKED;
+	enqueue(chan->queue, currentProcess);
+
+	// scheduling the next to be ready process;
+	sched();
+
+	release_spinlock(queueGuard);
 	//TODO: [PROJECT'24.MS1 - #10] [4] LOCKS - sleep
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("sleep is not implemented yet");
-	//Your Code is Here...
 
 }
 
@@ -55,7 +68,7 @@ void wakeup_one(struct Channel *chan)
 		// remove the first process in the blocked queue
 		struct Env* currentProcess = dequeue(chan->queue);
 		// change its state to ready
-		currentProcess->env_status = 1;
+		currentProcess->env_status = ENV_READY;
 		// add it to the ready queue
 		sched_insert_ready0(currentProcess);
 

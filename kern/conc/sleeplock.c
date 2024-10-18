@@ -48,6 +48,7 @@ void acquire_sleeplock(struct sleeplock *lk)
 
 void release_sleeplock(struct sleeplock *lk)
 {
+
 	acquire_spinlock(lk->lk);
 
 	if(LIST_SIZE(&(lk->chan->queue))!=0){

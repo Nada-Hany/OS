@@ -32,7 +32,7 @@ void init_queue(struct Env_Queue* queue)
 //================================
 // [2] Get queue size:
 //================================
-int queue_size(struct Env_Queue* queue)
+int x(struct Env_Queue* queue)
 {
 	if(queue != NULL)
 	{
