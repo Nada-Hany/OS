@@ -482,7 +482,7 @@ int process_command(int number_of_arguments, char** arguments)
 		{
 			LIST_INIT(&foundCommands); // empty the list
 
-			if(commands[i].num_of_args==number_of_arguments-1){
+			if((commands[i].num_of_args==number_of_arguments-1) || (commands[i].num_of_args==-1 && number_of_arguments>1)){
 				return i;
 			}else{
 				LIST_INSERT_TAIL(&foundCommands, &commands[i]); // insert it with one found command
