@@ -316,15 +316,19 @@ void sys_allocate_user_mem(uint32 virtual_address, uint32 size)
 {
 	//TODO: [PROJECT'24.MS1 - #03] [2] SYSTEM CALLS - Params Validation
 
-	allocate_user_mem(cur_env, virtual_address, size);
+	if(virtual_address+size<USER_HEAP_START || virtual_address+size>USER_HEAP_MAX)
+		env_exit();
+
+	else allocate_user_mem(cur_env, virtual_address, size);
 	return;
 }
 
 void sys_allocate_chunk(uint32 virtual_address, uint32 size, uint32 perms)
 {
 	//TODO: [PROJECT'24.MS1 - #03] [2] SYSTEM CALLS - Params Validation
-
-	allocate_chunk(cur_env->env_page_directory, virtual_address, size, perms);
+	if(virtual_address+size<USER_HEAP_START || virtual_address+size>USER_HEAP_MAX)
+			env_exit();
+	else allocate_chunk(cur_env->env_page_directory, virtual_address, size, perms);
 	return;
 }
 
