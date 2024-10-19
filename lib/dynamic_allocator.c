@@ -204,16 +204,15 @@ void *alloc_block_FF(uint32 size) {
 			if (elementSize == required_size) {
 				set_block_data(element, elementSize, 1);
 			}
+			//if size of new free block <16 min block size dont split
 			else if (elementSize - required_size < 16) {
 				set_block_data(element, elementSize, 1);
 			} else {
 				struct BlockElement *new_free_block =(struct BlockElement *) ((char *) element+ required_size);
 				set_block_data(element, required_size, 1);
 				set_block_data(new_free_block, elementSize - required_size, 0);
-
 			}
 			return (void*) ((char*) element );
-
 		}
 	}
 	void * new_block = sbrk(required_size);
@@ -227,13 +226,70 @@ void *alloc_block_FF(uint32 size) {
 //=========================================
 // [4] ALLOCATE BLOCK BY BEST FIT:
 //=========================================
-void *alloc_block_BF(uint32 size)
-{
+void *alloc_block_BF(uint32 size) {
 	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("alloc_block_BF is not implemented yet");
+	//panic("alloc_block_BF is not implemented yet");
 	//Your Code is Here...
 
+	//doctor code
+	{
+		if (size % 2 != 0)
+			size++;	//ensure that the size is even (to use LSB as allocation flag)
+		if (size < DYN_ALLOC_MIN_BLOCK_SIZE)
+			size = DYN_ALLOC_MIN_BLOCK_SIZE;
+		if (!is_initialized) {
+			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/
+			+ 2 * sizeof(int) /*da begin & end*/;
+			uint32 da_start = (uint32) sbrk(
+			ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
+			uint32 da_break = (uint32) sbrk(0);
+			initialize_dynamic_allocator(da_start, da_break - da_start);
+		}
+	}
+
+	//my code
+	if (size == 0) {
+		return NULL;
+	}
+
+	uint32 required_size = size + 2 * sizeof(int) /*header & footer*/;
+
+	struct BlockElement *element;
+	//uint32max= 0xFFFFFFFF
+	uint32 best_block_size = 0xFFFFFFFF;
+	struct BlockElement *best_block = NULL;
+	LIST_FOREACH(element ,&freeBlocksList)
+	{
+		uint32 element_size = get_block_size(element);
+		if (element_size >= required_size && element_size < best_block_size) {
+			best_block = element;
+			best_block_size = element_size;
+		}
+	}
+	if (best_block != NULL) {
+
+			LIST_REMOVE(&freeBlocksList, best_block);
+
+			if (best_block_size == required_size) {
+				set_block_data(best_block,best_block_size , 1);
+			} else if (best_block_size - required_size < 16) {
+				set_block_data(best_block, best_block_size, 1);
+			} else {
+				struct BlockElement *new_free_block =(struct BlockElement *) ((char *) best_block+ required_size);
+				set_block_data(best_block, required_size, 1);
+				set_block_data(new_free_block, best_block_size - required_size, 0);
+			}
+			return (void*) ((char*)best_block);
+		}
+	//if no free size
+		void * new_block = sbrk(required_size);
+			if (new_block == (void*) -1) {
+				return NULL;
+			} else {
+				set_block_data(new_block, required_size, 1);
+				return (void*) ((char*) new_block );
+			}
 }
 
 //===================================================
