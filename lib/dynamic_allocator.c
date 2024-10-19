@@ -243,8 +243,44 @@ void free_block(void *va)
 {
 	//TODO: [PROJECT'24.MS1 - #07] [3] DYNAMIC ALLOCATOR - free_block
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("free_block is not implemented yet");
+	//panic("free_block is not implemented yet");
 	//Your Code is Here...
+	if(va==NULL){
+		return;
+	}
+	//some data for my block
+	struct BlockElement * my_block_ptr = (struct BlockElement *) va;
+	uint32 my_block_size = get_block_size(va);
+	//free my block only
+	set_block_data(va,my_block_size, 0);
+	//data of next block
+	void * next_block =(void *) ((char*)va + my_block_size);
+	uint32 next_block_size = get_block_size(next_block);
+	//free next block if !allocated
+	int8 is_next_free = is_free_block(next_block);
+	if(is_next_free == 1){
+		//cprintf("next is free\n");
+		struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
+		LIST_REMOVE(&freeBlocksList,next_block_ptr);
+		LIST_REMOVE(&freeBlocksList,my_block_ptr);
+		my_block_size=my_block_size+next_block_size;
+		set_block_data(va, my_block_size, 0);
+	}
+
+
+	//data of previous block
+	uint32 prev_block_size = get_block_size((void*)((char*)va-4));
+	void * prev_block = (void *) ((char*)va - prev_block_size);
+	//free previous block if !allocated
+	int8 is_prev_free = is_free_block(prev_block);
+	if(is_prev_free == 1 && prev_block_size>0){
+		//cprintf("prev is free with size %d\n", prev_block_size);
+		struct BlockElement * prev_block_ptr = (struct BlockElement *) prev_block;
+		LIST_REMOVE(&freeBlocksList,prev_block_ptr);
+		LIST_REMOVE(&freeBlocksList,my_block_ptr);
+		my_block_size=my_block_size+prev_block_size;
+		set_block_data(prev_block,my_block_size, 0);
+	}
 }
 
 //=========================================
