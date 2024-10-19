@@ -290,8 +290,81 @@ void *realloc_block_FF(void* va, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS1 - #08] [3] DYNAMIC ALLOCATOR - realloc_block_FF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("realloc_block_FF is not implemented yet");
+	//panic("realloc_block_FF is not implemented yet");
 	//Your Code is Here...
+
+	if (va == NULL && new_size == 0)
+		return NULL;
+
+	if (va == NULL)
+		return alloc_block_FF(new_size);
+
+	if (new_size == 0)
+	{
+		free_block(va);
+		return NULL;
+
+	}
+	// add header/footer sizes
+	new_size = new_size + 8;
+
+	uint32 old_size = get_block_size(va);
+	if (old_size == new_size || new_size < 16)
+		return va;
+
+
+	// reallocating with bigger size
+	if (new_size > old_size)
+	{
+		// next block data
+		struct BlockElement * my_block_ptr = (struct BlockElement *) va;
+		void * next_block =(void *) ((char*)va + old_size);
+		uint32 next_block_size = get_block_size(next_block);
+		int8 is_next_free = is_free_block(next_block);
+
+		// check if the next block can be merged or split
+		if(is_next_free)
+		{
+			uint32 diff = new_size - old_size;
+			struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
+
+			// merge without splitting
+			if (next_block_size+old_size == new_size)
+			{
+				LIST_REMOVE(&freeBlocksList, next_block_ptr);
+				set_block_data(va, new_size, 1);
+				return va;
+			}
+
+			// Split the next block
+			if (next_block_size - diff >= 16)
+			{
+				LIST_REMOVE(&freeBlocksList, next_block_ptr);
+				set_block_data(((char *)next_block_ptr+diff), next_block_size - diff, 0);
+				set_block_data(va, new_size, 1);
+				return va;
+			}
+		}
+
+		// if next ! free || can't be merged
+		// free the block and allocate in new place
+		free_block(va);
+		return alloc_block_FF(new_size-8);
+	}
+
+	// reallocating with smaller size
+	else
+	{
+		uint32 diff = old_size - new_size;
+		if (diff >= 16)
+		{
+            set_block_data(va, new_size, 1);
+            set_block_data(((char *)va + new_size), diff, 0);
+
+		}
+		return va;
+	}
+
 }
 
 /*********************************************************************************************/
