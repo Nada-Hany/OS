@@ -231,7 +231,7 @@ void *alloc_block_BF(uint32 size)
 {
 	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("alloc_block_BF is not implemented yet");
+	//panic("alloc_block_BF is not implemented yet");
 	//Your Code is Here...
 
 }
