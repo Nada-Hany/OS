@@ -8,7 +8,6 @@
 #include <inc/string.h>
 #include "../inc/dynamic_allocator.h"
 
-
 //==================================================================================//
 //============================== GIVEN FUNCTIONS ===================================//
 //==================================================================================//
@@ -309,7 +308,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	new_size = new_size + 8;
 
 	uint32 old_size = get_block_size(va);
-	if (old_size == new_size || new_size < 16)
+	if (old_size == new_size || new_size < 16 || new_size % 2 != 0)
 		return va;
 
 
@@ -347,9 +346,31 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		}
 
 		// if next ! free || can't be merged
-		// free the block and allocate in new place
+
+        //save the old data
+        uint32 data_size = old_size - 8;
+        char* old_ptr = (char*)va;
+        char temp[data_size];
+
+        for (uint32 i = 0; i < data_size; i++)
+        {
+            temp[i] = old_ptr[i];
+        }
+
+        // free the block and allocate in new place
 		free_block(va);
-		return alloc_block_FF(new_size-8);
+		void* new_address = alloc_block_FF(new_size-8);
+
+		if (new_address == NULL)
+			return NULL;
+
+		//copy data to new address
+		char* new_ptr = (char*) new_address;
+        for (uint32 i = 0; i < data_size; i++)
+        {
+            new_ptr[i] = temp[i];
+        }
+        return new_address;
 	}
 
 	// reallocating with smaller size
