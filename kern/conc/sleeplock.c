@@ -33,14 +33,17 @@ int holding_sleeplock(struct sleeplock *lk)
 void acquire_sleeplock(struct sleeplock *lk)
 {
 
-	acquire_spinlock(lk->lk);
+	struct spinlock *lock = &lk->lk;
+	struct Channel *channel = &lk->chan;
+
+	acquire_spinlock(lock);
 
 	while(lk->locked){
-		sleep(lk->chan, lk->lk);
+		sleep(channel, lock);
 	}
 
 	lk->locked = 1;
-	release_spinlock(lk->lk);
+	release_spinlock(lock);
 
 	//TODO: [PROJECT'24.MS1 - #13] [4] LOCKS - acquire_sleeplock
 
@@ -48,16 +51,22 @@ void acquire_sleeplock(struct sleeplock *lk)
 
 void release_sleeplock(struct sleeplock *lk)
 {
+	struct spinlock *lock = &lk->lk;
+	struct Channel *channel = &lk->chan;
 
-	acquire_spinlock(lk->lk);
+	acquire_spinlock(lock);
+	struct Env_Queue* q = &channel->queue;
 
-	if(LIST_SIZE(&(lk->chan->queue))!=0){
 
-		wakeup_all(lk->chan);
+	if(q->size !=0){
+
+		wakeup_all(channel);
 	}
-	lk->lk = 0;
 
-	release_spinlock(lk->lk);
+	// tf was that
+	// lk->lk = 0;
+
+	release_spinlock(lock);
 
 	//TODO: [PROJECT'24.MS1 - #14] [4] LOCKS - release_sleeplock
 }

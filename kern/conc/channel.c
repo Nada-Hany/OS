@@ -31,19 +31,24 @@ void sleep(struct Channel *chan, struct spinlock* lk)
 //	acquire_spinlock(lk);
 	release_spinlock(lk);
 
-	struct spinlock* queueGuard;
-	init_spinlock(queueGuard, "queueGuard");
+	struct spinlock queueGuard;
+	init_spinlock(&queueGuard, "queueGuard");
+	struct spinlock *tmp = &queueGuard;
 
 	struct Env* currentProcess = get_cpu_proc();
 
+	acquire_spinlock(tmp);
+
+
 	// block the running process on the given channel
 	currentProcess->env_status = ENV_BLOCKED;
-	enqueue(chan->queue, currentProcess);
+//	struct Env_Queue* q = &chan->queue;
+	enqueue(&chan->queue, currentProcess);
 
 	// scheduling the next to be ready process;
 	sched();
 
-	release_spinlock(queueGuard);
+	release_spinlock(tmp);
 	//TODO: [PROJECT'24.MS1 - #10] [4] LOCKS - sleep
 
 }
@@ -58,23 +63,29 @@ void sleep(struct Channel *chan, struct spinlock* lk)
 
 void wakeup_one(struct Channel *chan)
 {
-	struct spinlock* queueGuard;
-	init_spinlock(queueGuard, "queueGuard");
+	struct spinlock queueGuard;
+	init_spinlock(&queueGuard, "queueGuard");
+	struct spinlock *tmp = &queueGuard;
 
+//	struct Env_Queue* q = &chan->queue;
 	// making sure there's blocked processes
-	if(queue_size(chan->queue)!=0){
 
-		acquire_spinlock(queueGuard);
-		// remove the first process in the blocked queue
-		struct Env* currentProcess = dequeue(chan->queue);
-		// change its state to ready
-		currentProcess->env_status = ENV_READY;
-		// add it to the ready queue
-		sched_insert_ready0(currentProcess);
 
-		release_spinlock(queueGuard);
+	acquire_spinlock(tmp);
+	// remove the first process in the blocked queue
+	struct Env* currentProcess = dequeue(&chan->queue);
+	// change its state to ready
+	currentProcess->env_status = ENV_READY;
+	// add it to the ready queue
+	sched_insert_ready0(currentProcess);
 
-	}
+	release_spinlock(tmp);
+
+
+//	if(chan->queue.size !=0){
+
+
+	//}
 
 	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one.
 }
