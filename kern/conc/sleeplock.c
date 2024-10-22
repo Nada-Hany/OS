@@ -35,13 +35,15 @@ void acquire_sleeplock(struct sleeplock *lk)
 
 	struct spinlock *lock = &lk->lk;
 	struct Channel *channel = &lk->chan;
-
+	cprintf("in acquire function\n");
 	acquire_spinlock(lock);
 
-	while(lk->locked){
+	while(holding_sleeplock(lk)){
+		cprintf("in acquire loop\n");
+//		release_spinlock(lock);
 		sleep(channel, lock);
 	}
-
+	lk->pid = get_cpu_proc()->env_id;
 	lk->locked = 1;
 	release_spinlock(lock);
 
@@ -57,14 +59,12 @@ void release_sleeplock(struct sleeplock *lk)
 	acquire_spinlock(lock);
 	struct Env_Queue* q = &channel->queue;
 
-
-	if(q->size !=0){
-
+	if(channel->queue.size!=0){
 		wakeup_all(channel);
+		cprintf("blocked queue size %d, in release if cond \n",channel->queue.size );
 	}
 
-	// tf was that
-	// lk->lk = 0;
+	lk->locked = 0;
 
 	release_spinlock(lock);
 
