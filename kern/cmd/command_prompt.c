@@ -453,16 +453,47 @@ int execute_command(char *command_string)
 }
 
 
+int subsequence_matched(char *command_name, char *arg_name){
+	int ptr_command_name=0,ptr_arg_name=0;
+	int len_command_name=strlen(command_name);
+	int len_arg_name=strlen(arg_name);
+
+	while(ptr_command_name<len_command_name && ptr_arg_name<len_arg_name){
+		if(arg_name[ptr_arg_name]==command_name[ptr_command_name]){
+			ptr_command_name++;
+			ptr_arg_name++;
+		}else ptr_command_name++;
+	}
+
+	if(ptr_arg_name>=len_arg_name)
+		return 1;
+	else return 0;
+
+}
+
 int process_command(int number_of_arguments, char** arguments)
 {
 	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
+	LIST_INIT(&foundCommands); // initialize it for the Matched Commands
 
 	for (int i = 0; i < NUM_OF_COMMANDS; i++)
 	{
 		if (strcmp(arguments[0], commands[i].name) == 0)
 		{
-			return i;
+			LIST_INIT(&foundCommands); // empty the list
+
+			if((commands[i].num_of_args==number_of_arguments-1) || (commands[i].num_of_args==-1 && number_of_arguments>1)){
+				return i;
+			}else{
+				LIST_INSERT_TAIL(&foundCommands, &commands[i]); // insert it with one found command
+				return CMD_INV_NUM_ARGS;
+			}
+		}else if(subsequence_matched(commands[i].name,arguments[0])){
+			LIST_INSERT_TAIL(&foundCommands, &commands[i]);
 		}
 	}
-	return CMD_INVALID;
+	int size = LIST_SIZE(&foundCommands);
+	if(size<=0)
+		return CMD_INVALID;
+	else return CMD_MATCHED;
 }
