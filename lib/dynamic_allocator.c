@@ -355,39 +355,42 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	if (va == NULL && new_size == 0)
 		return NULL;
 
-	if (va == NULL)
-		return alloc_block_FF(new_size);
-
 	if (new_size == 0)
 	{
 		free_block(va);
 		return NULL;
-
 	}
+
+	if (new_size % 2 != 0)
+		new_size++;	//ensure that the size is even (to use LSB as allocation flag)
+	if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE)
+		new_size = DYN_ALLOC_MIN_BLOCK_SIZE;
+
+	if (va == NULL)
+		return alloc_block_FF(new_size);
+
+
 	// add header/footer sizes
 	new_size = new_size + 8;
-
 	uint32 old_size = get_block_size(va);
-	//to be fixed || new_size < 16 || new_size % 2 != 0
-	if (old_size == new_size || new_size < 16 || new_size % 2 != 0)
+
+	if (old_size == new_size)
 		return va;
 
+	// next block data
+	struct BlockElement * my_block_ptr = (struct BlockElement *) va;
+	void * next_block =(void *) ((char*)va + old_size);
+	struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
+	uint32 next_block_size = get_block_size(next_block);
+	int8 is_next_free = is_free_block(next_block);
 
 	// reallocating with bigger size
 	if (new_size > old_size)
 	{
-		// next block data
-		struct BlockElement * my_block_ptr = (struct BlockElement *) va;
-		void * next_block =(void *) ((char*)va + old_size);
-		uint32 next_block_size = get_block_size(next_block);
-		int8 is_next_free = is_free_block(next_block);
-
 		// check if the next block can be merged or split
 		if(is_next_free)
 		{
 			uint32 diff = new_size - old_size;
-			struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
-
 			// merge without splitting
 			//this happens in two cases this and if 0<= (next_block_size+old_size)-new_size < 16
 			if (next_block_size+old_size == new_size)
@@ -410,7 +413,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		}
 
 		// if next ! free || can't be merged
-
         //save the old data
         uint32 data_size = old_size - 8;
         char* old_ptr = (char*)va;
@@ -449,9 +451,16 @@ void *realloc_block_FF(void* va, uint32 new_size)
             set_block_data(((char *)va + new_size), diff, 1);
             free_block(((char *)va + new_size));
 		}
+		else
+		{
+			if (is_next_free)
+			{
+				LIST_REMOVE(&freeBlocksList,next_block_ptr);
+				set_block_data(((char *)va + new_size), diff+next_block_size, 0);
+			}
+		}
 		return va;
 	}
-
 }
 
 /*********************************************************************************************/
