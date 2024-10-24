@@ -368,6 +368,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	new_size = new_size + 8;
 
 	uint32 old_size = get_block_size(va);
+	//to be fixed || new_size < 16 || new_size % 2 != 0
 	if (old_size == new_size || new_size < 16 || new_size % 2 != 0)
 		return va;
 
@@ -445,8 +446,8 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		if (diff >= 16)
 		{
             set_block_data(va, new_size, 1);
-            set_block_data(((char *)va + new_size), diff, 0);
-
+            set_block_data(((char *)va + new_size), diff, 1);
+            free_block(((char *)va + new_size));
 		}
 		return va;
 	}
