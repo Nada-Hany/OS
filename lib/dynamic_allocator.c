@@ -303,6 +303,10 @@ void free_block(void *va)
 	if(va==NULL){
 		return;
 	}
+	int8 is_myblock_free = is_free_block(va);
+	if(is_myblock_free){
+		return;
+	}
 	//some data for my block
 	struct BlockElement * my_block_ptr = (struct BlockElement *) va;
 	uint32 my_block_size = get_block_size(va);
@@ -364,6 +368,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	new_size = new_size + 8;
 
 	uint32 old_size = get_block_size(va);
+	//to be fixed || new_size < 16 || new_size % 2 != 0
 	if (old_size == new_size || new_size < 16 || new_size % 2 != 0)
 		return va;
 
@@ -384,9 +389,12 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
 
 			// merge without splitting
+			//this happens in two cases this and if 0<= (next_block_size+old_size)-new_size < 16
 			if (next_block_size+old_size == new_size)
 			{
+
 				LIST_REMOVE(&freeBlocksList, next_block_ptr);
+				//set_block_data(va, next_block_size+old_size, 1);
 				set_block_data(va, new_size, 1);
 				return va;
 			}
@@ -433,11 +441,13 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	else
 	{
 		uint32 diff = old_size - new_size;
+		//if diff <16 can be merged with next block if next block is free
+		//if diff >= 16 will be merged also
 		if (diff >= 16)
 		{
             set_block_data(va, new_size, 1);
-            set_block_data(((char *)va + new_size), diff, 0);
-
+            set_block_data(((char *)va + new_size), diff, 1);
+            free_block(((char *)va + new_size));
 		}
 		return va;
 	}
