@@ -456,6 +456,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			if (is_next_free)
 			{
 				LIST_REMOVE(&freeBlocksList,next_block_ptr);
+				set_block_data(va, new_size, 1);
 				set_block_data(((char *)va + new_size), diff+next_block_size, 0);
 			}
 		}
