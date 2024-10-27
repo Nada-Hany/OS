@@ -391,17 +391,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		if(is_next_free)
 		{
 			uint32 diff = new_size - old_size;
-			// merge without splitting
-			//this happens in two cases this and if 0<= (next_block_size+old_size)-new_size < 16
-			if (next_block_size+old_size == new_size)
-			{
-
-				LIST_REMOVE(&freeBlocksList, next_block_ptr);
-				//set_block_data(va, next_block_size+old_size, 1);
-				set_block_data(va, new_size, 1);
-				return va;
-			}
-
 			// Split the next block
 			if (next_block_size - diff >= 16)
 			{
@@ -410,8 +399,15 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				set_block_data(va, new_size, 1);
 				return va;
 			}
-		}
 
+			// merge without splitting
+			else if (next_block_size - diff >= 0)
+			{
+				LIST_REMOVE(&freeBlocksList, next_block_ptr);
+				set_block_data(va, next_block_size+old_size, 1);
+				return va;
+			}
+		}
 		// if next ! free || can't be merged
         //save the old data
         uint32 data_size = old_size - 8;
