@@ -104,6 +104,7 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("initialize_dynamic_allocator is not implemented yet");
 	//Your Code is Here...
+	    if (initSizeOfAllocatedSpace < 24) initSizeOfAllocatedSpace = 24;
 		uint32 *startptr = (uint32 *) daStart;
 		*startptr=1;
 		uint32 daEnd=daStart+initSizeOfAllocatedSpace-4;
