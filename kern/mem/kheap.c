@@ -49,14 +49,30 @@ void* sbrk(int numOfPages)
 	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
 	 */
-
+	uint32 previous_segBreak = segBreak;
+	if(numOfPages>0){
+		int free_frame_list_size = LIST_SIZE(&MemFrameLists.free_frame_list);
+		uint32 increase = numOfPages * PAGE_SIZE;
+		if(increase + segBreak > rLimit || free_frame_list_size < numOfPages){
+			return (void*)-1;
+		}
+		segBreak+=increase;
+		uint32 va = previous_segBreak;
+		while(va<segBreak){
+				struct FrameInfo *ptr_frame_info ;
+				int ret = allocate_frame(&ptr_frame_info);
+				ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_PRESENT);
+				va = va + PAGE_SIZE;
+		}
+	}
+	return (void*)previous_segBreak;
 	//MS2: COMMENT THIS LINE BEFORE START CODING==========
-	return (void*)-1 ;
+	//return (void*)-1 ;
 	//====================================================
 
 	//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
 	// Write your code here, remove the panic and write your code
-	panic("sbrk() is not implemented yet...!!");
+	//panic("sbrk() is not implemented yet...!!");
 }
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
@@ -84,9 +100,18 @@ void kfree(void* virtual_address)
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
 {
+	//frame address not frame number
+	//pt frame number
+	uint32 page_directory_entry = ptr_page_directory[PDX(virtual_address)];
+	uint32 page_directory_frame_number = page_directory_entry >> 12;
+//	uint32 page_table_address = page_directory_frame_number * PAGE_SIZE ;
+	uint32 page_table_entry_address  = page_directory_frame_number + PTX(virtual_address) * 32;
+	uint32 offset = PGOFF(virtual_address);
+	uint32 physical_address = page_table_entry_address + offset;
+	return physical_address;
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
-	panic("kheap_physical_address() is not implemented yet...!!");
+	//panic("kheap_physical_address() is not implemented yet...!!");
 
 	//return the physical address corresponding to given virtual_address
 	//refer to the project presentation and documentation for details

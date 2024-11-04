@@ -215,12 +215,15 @@ void *alloc_block_FF(uint32 size) {
 			return (void*) ((char*) element );
 		}
 	}
-	void * new_block = sbrk(required_size);
+	int numofPages = ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE ;
+	void * new_block = sbrk(numofPages);
 	if (new_block == (void*) -1) {
 		return NULL;
 	} else {
-		set_block_data(new_block, required_size, 1);
-		return (void*) ((char*) new_block );
+		set_block_data(new_block, numofPages*PAGE_SIZE, 1);
+		free_block(new_block);
+		void * ret = alloc_block_FF(required_size);
+		return ret;
 	}
 }
 //=========================================
