@@ -81,9 +81,56 @@ void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
-	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+//	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+	if(isKHeapPlacementStrategyFIRSTFIT()){
+		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+			cprintf("dyn alloc\n");
+			return alloc_block_FF(size);
+		}else{
+			uint32 va = rLimit + PAGE_SIZE;
+			uint32 va2=va;
+			uint32 total_size=0;
+			while(va2 < KERNEL_HEAP_MAX){
+				uint32 to_map_page = va2;
+				if(kheap_physical_address(to_map_page) != 0){
+					va2 = va2 + PAGE_SIZE;
+					continue;
+				}
+
+				va2 = va2 + PAGE_SIZE;
+				total_size = total_size + PAGE_SIZE;
+
+			}
+			if(total_size < size)
+				return NULL;
+			while(va < KERNEL_HEAP_MAX && size > 0){
+				uint32 to_map_page = va;
+				if(kheap_physical_address(to_map_page) != 0){
+					va = va + PAGE_SIZE;
+					continue;
+				}
+				if(PAGE_SIZE>size && size>0)
+					to_map_page = to_map_page + size;
+				struct FrameInfo *ptr_frame_info ;
+				int ret = allocate_frame(&ptr_frame_info);
+				if (ret == E_NO_MEM){
+					cprintf("va:0x%x\n",va);
+					return NULL;
+				}
+				ret = map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_PRESENT);
+				if (ret == E_NO_MEM){
+					cprintf("va:0x%x\n",va);
+					free_frame(ptr_frame_info) ;
+					return NULL;
+				}
+				va = va + PAGE_SIZE;
+				size = size - PAGE_SIZE;
+
+			}
+		}
+	}
 	return (void *) -1;
 }
 
@@ -100,23 +147,25 @@ void kfree(void* virtual_address)
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
 {
+//	cprintf("va:0x%x\n",virtual_address);
 	//getting the page table start address
-	uint32 page_directory_entry = ptr_page_directory[PDX(virtual_address)];
-	uint32 page_directory_frame_address = page_directory_entry >> 12;
-	uint32 * page_table_ptr = (uint32 *)page_directory_frame_address;
-	if(page_directory_frame_address == 0){
+//	uint32 page_directory_entry = ptr_page_directory[PDX(virtual_address)];
+//	uint32 page_directory_frame_address = EXTRACT_ADDRESS(page_directory_entry);
+	uint32 *page_table_ptr;
+//	get_page_table(ptr_page_directory,virtual_address,page_table_ptr);
+	if(get_page_table(ptr_page_directory,virtual_address,&page_table_ptr) == TABLE_NOT_EXIST){
 		return 0;
 	}
 	//getting the page address
 	uint32 page_table_entry_address  = page_table_ptr[PTX(virtual_address)];
-	uint32 page_address = page_table_entry_address >> 12;
+	uint32 page_address = EXTRACT_ADDRESS(page_table_entry_address);
 	if(page_address == 0){
-			return 0;
+		return 0;
 	}
 	//adding offset and return
 	uint32 offset = PGOFF(virtual_address);
 	uint32 physical_address = page_address + offset;
-	return physical_address << 12;
+	return physical_address;
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
 	//panic("kheap_physical_address() is not implemented yet...!!");
@@ -129,18 +178,18 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
+	to_frame_info(physical_address);
 	uint32 physical_address_no_offset = ROUNDDOWN(physical_address, PAGE_SIZE);
 	uint32 offset = physical_address - physical_address_no_offset;
 	physical_address_no_offset = physical_address_no_offset >>12;
 	uint32 kheap_virtual_address = 0;
 	for(int i=0;i<1024;i++){
 		uint32 page_directory_entry = ptr_page_directory[i];
-		uint32 page_directory_frame_address = page_directory_entry >> 12;
-		uint32* page_table_start_address  =(uint32 *) (page_directory_frame_address);
+		struct FrameInfo* page_table_start_address  = to_frame_info(EXTRACT_ADDRESS(page_directory_entry));
 		for(int j=0;j<1024;j++){
-			uint32 page_table_entry = page_table_start_address[j] >> 12;
+			uint32 page_table_entry = EXTRACT_ADDRESS(page_table_start_address[j]);
 			if(page_table_entry == physical_address_no_offset){
-				kheap_virtual_address = (i << 20) + (j << 10) + offset;
+				kheap_virtual_address = (i << 22) + (j << 12) + offset;
 				return kheap_virtual_address;
 			}
 
