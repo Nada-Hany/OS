@@ -84,7 +84,7 @@ void* kmalloc(unsigned int size)
 	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-
+	return (void *) -1;
 }
 
 void kfree(void* virtual_address)
@@ -100,15 +100,23 @@ void kfree(void* virtual_address)
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
 {
-	//frame address not frame number
-	//pt frame number
+	//getting the page table start address
 	uint32 page_directory_entry = ptr_page_directory[PDX(virtual_address)];
-	uint32 page_directory_frame_number = page_directory_entry >> 12;
-//	uint32 page_table_address = page_directory_frame_number * PAGE_SIZE ;
-	uint32 page_table_entry_address  = page_directory_frame_number + PTX(virtual_address) * 32;
+	uint32 page_directory_frame_address = page_directory_entry >> 12;
+	uint32 * page_table_ptr = (uint32 *)page_directory_frame_address;
+	if(page_directory_frame_address == 0){
+		return 0;
+	}
+	//getting the page address
+	uint32 page_table_entry_address  = page_table_ptr[PTX(virtual_address)];
+	uint32 page_address = page_table_entry_address >> 12;
+	if(page_address == 0){
+			return 0;
+	}
+	//adding offset and return
 	uint32 offset = PGOFF(virtual_address);
-	uint32 physical_address = page_table_entry_address + offset;
-	return physical_address;
+	uint32 physical_address = page_address + offset;
+	return physical_address << 12;
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
 	//panic("kheap_physical_address() is not implemented yet...!!");
@@ -121,9 +129,27 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
+	uint32 physical_address_no_offset = ROUNDDOWN(physical_address, PAGE_SIZE);
+	uint32 offset = physical_address - physical_address_no_offset;
+	physical_address_no_offset = physical_address_no_offset >>12;
+	uint32 kheap_virtual_address = 0;
+	for(int i=0;i<1024;i++){
+		uint32 page_directory_entry = ptr_page_directory[i];
+		uint32 page_directory_frame_address = page_directory_entry >> 12;
+		uint32* page_table_start_address  =(uint32 *) (page_directory_frame_address);
+		for(int j=0;j<1024;j++){
+			uint32 page_table_entry = page_table_start_address[j] >> 12;
+			if(page_table_entry == physical_address_no_offset){
+				kheap_virtual_address = (i << 20) + (j << 10) + offset;
+				return kheap_virtual_address;
+			}
+
+		}
+	}
+	return kheap_virtual_address;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
-	panic("kheap_virtual_address() is not implemented yet...!!");
+	//panic("kheap_virtual_address() is not implemented yet...!!");
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
