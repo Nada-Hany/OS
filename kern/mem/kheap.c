@@ -178,18 +178,19 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
-	to_frame_info(physical_address);
-	uint32 physical_address_no_offset = ROUNDDOWN(physical_address, PAGE_SIZE);
-	uint32 offset = physical_address - physical_address_no_offset;
-	physical_address_no_offset = physical_address_no_offset >>12;
+	cprintf("kheap_virtual_address\n");
+	uint32 physical_address_no_offset = EXTRACT_ADDRESS(physical_address);
+	uint32 offset = physical_address & 0xFFF;
 	uint32 kheap_virtual_address = 0;
 	for(int i=0;i<1024;i++){
 		uint32 page_directory_entry = ptr_page_directory[i];
-		struct FrameInfo* page_table_start_address  = to_frame_info(EXTRACT_ADDRESS(page_directory_entry));
+		uint32 * page_table_start_address  = (uint32 *)(EXTRACT_ADDRESS(page_directory_entry));
 		for(int j=0;j<1024;j++){
 			uint32 page_table_entry = EXTRACT_ADDRESS(page_table_start_address[j]);
+			cprintf("the page_table_entry%x\n", page_table_entry);
 			if(page_table_entry == physical_address_no_offset){
 				kheap_virtual_address = (i << 22) + (j << 12) + offset;
+				cprintf("the virtual address%x\n", kheap_virtual_address);
 				return kheap_virtual_address;
 			}
 
