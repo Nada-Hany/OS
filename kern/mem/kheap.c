@@ -26,7 +26,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		if (ret == E_NO_MEM){
 			panic("no enough memory to allocate a frame\n");
 		}
-		ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_PRESENT);
+		ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_WRITEABLE);
 		if (ret == E_NO_MEM){
 			free_frame(ptr_frame_info) ;
 			panic("No enough memory for page table!\n");
@@ -49,6 +49,7 @@ void* sbrk(int numOfPages)
 	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
 	 */
+//	cprintf("sbrk called\n");
 	uint32 previous_segBreak = segBreak;
 	if(numOfPages>0){
 		int free_frame_list_size = LIST_SIZE(&MemFrameLists.free_frame_list);
@@ -59,12 +60,20 @@ void* sbrk(int numOfPages)
 		segBreak+=increase;
 		uint32 va = previous_segBreak;
 		while(va<segBreak){
-				struct FrameInfo *ptr_frame_info ;
+			struct FrameInfo *ptr_frame_info ;
 				int ret = allocate_frame(&ptr_frame_info);
-				ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_PRESENT);
+				if (ret == E_NO_MEM){
+					panic("no enough memory to allocate a frame\n");
+				}
+				ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_WRITEABLE);
+				if (ret == E_NO_MEM){
+					free_frame(ptr_frame_info) ;
+					panic("No enough memory for page table!\n");
+				}
 				va = va + PAGE_SIZE;
 		}
 	}
+//	cprintf("sbrk finished\n");
 	return (void*)previous_segBreak;
 	//MS2: COMMENT THIS LINE BEFORE START CODING==========
 	//return (void*)-1 ;
@@ -85,8 +94,9 @@ void* kmalloc(unsigned int size)
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 	if(isKHeapPlacementStrategyFIRSTFIT()){
-		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+		if(size < DYN_ALLOC_MAX_BLOCK_SIZE){
 			cprintf("dyn alloc\n");
+//			cprintf("seg break %x\n", segBreak);
 			return alloc_block_FF(size);
 		}else{
 			uint32 va = rLimit + PAGE_SIZE;
@@ -119,7 +129,7 @@ void* kmalloc(unsigned int size)
 					cprintf("va:0x%x\n",va);
 					return NULL;
 				}
-				ret = map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_PRESENT);
+				ret = map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
 				if (ret == E_NO_MEM){
 					cprintf("va:0x%x\n",va);
 					free_frame(ptr_frame_info) ;
@@ -178,28 +188,10 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
-	cprintf("kheap_virtual_address\n");
-	uint32 physical_address_no_offset = EXTRACT_ADDRESS(physical_address);
-	uint32 offset = physical_address & 0xFFF;
-	uint32 kheap_virtual_address = 0;
-	for(int i=0;i<1024;i++){
-		uint32 page_directory_entry = ptr_page_directory[i];
-		uint32 * page_table_start_address  = (uint32 *)(EXTRACT_ADDRESS(page_directory_entry));
-		for(int j=0;j<1024;j++){
-			uint32 page_table_entry = EXTRACT_ADDRESS(page_table_start_address[j]);
-			cprintf("the page_table_entry%x\n", page_table_entry);
-			if(page_table_entry == physical_address_no_offset){
-				kheap_virtual_address = (i << 22) + (j << 12) + offset;
-				cprintf("the virtual address%x\n", kheap_virtual_address);
-				return kheap_virtual_address;
-			}
 
-		}
-	}
-	return kheap_virtual_address;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
-	//panic("kheap_virtual_address() is not implemented yet...!!");
+	panic("kheap_virtual_address() is not implemented yet...!!");
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
