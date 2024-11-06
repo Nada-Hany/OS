@@ -86,6 +86,18 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
+int num_of_unmapped_pages(uint32 start_va){
+	int num = 0;
+	while(start_va<KERNEL_HEAP_MAX){
+		if(kheap_physical_address(start_va) != 0){
+			start_va = start_va + PAGE_SIZE;
+			continue;
+		}
+		num = num + 1;
+		start_va = start_va + PAGE_SIZE;
+	}
+	return num;
+}
 void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
@@ -94,51 +106,45 @@ void* kmalloc(unsigned int size)
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 	if(isKHeapPlacementStrategyFIRSTFIT()){
-		if(size < DYN_ALLOC_MAX_BLOCK_SIZE){
-			cprintf("dyn alloc\n");
-//			cprintf("seg break %x\n", segBreak);
+		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
 			return alloc_block_FF(size);
 		}else{
 			uint32 va = rLimit + PAGE_SIZE;
-			uint32 va2=va;
-			uint32 total_size=0;
-			while(va2 < KERNEL_HEAP_MAX){
-				uint32 to_map_page = va2;
-				if(kheap_physical_address(to_map_page) != 0){
-					va2 = va2 + PAGE_SIZE;
-					continue;
-				}
 
-				va2 = va2 + PAGE_SIZE;
-				total_size = total_size + PAGE_SIZE;
-
-			}
-			if(total_size < size)
+			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
+			int unmapped_pages=num_of_unmapped_pages(va);
+			if(free_frames*PAGE_SIZE<size || unmapped_pages*PAGE_SIZE<size)
 				return NULL;
-			while(va < KERNEL_HEAP_MAX && size > 0){
+
+			int pages_to_alloc = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+
+			int found_start=0;
+			uint32 actual_start=0;
+
+			while(pages_to_alloc){
 				uint32 to_map_page = va;
 				if(kheap_physical_address(to_map_page) != 0){
 					va = va + PAGE_SIZE;
 					continue;
 				}
-				if(PAGE_SIZE>size && size>0)
+				if(PAGE_SIZE>size)
 					to_map_page = to_map_page + size;
+
+				if(!found_start){
+					actual_start=to_map_page;
+					found_start=1;
+				}
+
 				struct FrameInfo *ptr_frame_info ;
-				int ret = allocate_frame(&ptr_frame_info);
-				if (ret == E_NO_MEM){
-					cprintf("va:0x%x\n",va);
-					return NULL;
-				}
-				ret = map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
-				if (ret == E_NO_MEM){
-					cprintf("va:0x%x\n",va);
-					free_frame(ptr_frame_info) ;
-					return NULL;
-				}
+				allocate_frame(&ptr_frame_info);
+
+				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+
 				va = va + PAGE_SIZE;
-				size = size - PAGE_SIZE;
+				pages_to_alloc=pages_to_alloc-1;
 
 			}
+			return (void *)actual_start;
 		}
 	}
 	return (void *) -1;
