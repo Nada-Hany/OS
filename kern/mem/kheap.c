@@ -10,6 +10,7 @@
 //Return:
 //	On success: 0
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
+
 int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate, uint32 daLimit)
 {
 	//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
@@ -17,6 +18,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	start = (uint32) daStart;
 	segBreak = (uint32) daStart + initSizeToAllocate;
 	rLimit = (uint32) daLimit;
+	memset(virtual_addresses, 0, sizeof(virtual_addresses));
 	if(segBreak>rLimit)
 		panic("initial size exceeds the given limit");
 	uint32 va = start;
@@ -194,10 +196,11 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
-
+	uint32 offset = PGOFF(physical_address);
+	return virtual_addresses[physical_address>>12]+offset;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
-	panic("kheap_virtual_address() is not implemented yet...!!");
+	//panic("kheap_virtual_address() is not implemented yet...!!");
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
