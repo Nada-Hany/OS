@@ -238,7 +238,11 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
 	uint32 offset = PGOFF(physical_address);
-	return virtual_addresses[physical_address>>12]+offset;
+	uint32 va = virtual_addresses[physical_address>>12] & ~0xFFF;
+	if(va!=0){
+		va+=offset;
+	}
+	return va;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
 	//panic("kheap_virtual_address() is not implemented yet...!!");
