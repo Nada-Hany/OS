@@ -301,13 +301,29 @@ void *alloc_block_BF(uint32 size) {
 			return (void*) ((char*)best_block);
 		}
 	//if no free size
-		void * new_block = sbrk(required_size);
-			if (new_block == (void*) -1) {
-				return NULL;
-			} else {
-				set_block_data(new_block, required_size, 1);
-				return (void*) ((char*) new_block );
-			}
+	uint32 numofPages = ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE ;
+	//	cprintf("pages needed %d\n", numofPages);
+	//	cprintf("old sbrk %\n",  (uint32)sbrk(0));
+		void * new_block = sbrk(numofPages);
+		if (new_block == (void*) -1) {
+			return NULL;
+		} else {
+	//		cprintf("found space %x\n", (uint32)new_block);
+			uint32 daEnd=(uint32)sbrk(0)-sizeof(uint32);
+	//		cprintf("da end %x\n", daEnd);
+			uint32 *endptr=(uint32 *)daEnd;
+	//		cprintf("end ptr %x\n", (uint32)*endptr);
+			//////////////////
+			*endptr=1;
+			//////////////////
+	//		cprintf("made da end\n");
+			set_block_data(new_block, (numofPages*PAGE_SIZE), 1);
+	//		cprintf("setted new block data\n");
+			free_block(new_block);
+	//		cprintf("freed new block\n");
+			void * ret = alloc_block_BF(size);
+			return (char*) ret;
+		}
 }
 
 //===================================================
