@@ -119,7 +119,7 @@ void* kmalloc(unsigned int size)
 				return NULL;
 
 			int pages_to_alloc = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-
+			//cprintf ("pages_to_alloc %d\n",pages_to_alloc);
 			int found_start=0;
 			uint32 actual_start=0;
 
@@ -144,20 +144,60 @@ void* kmalloc(unsigned int size)
 
 				va = va + PAGE_SIZE;
 				pages_to_alloc=pages_to_alloc-1;
-
 			}
+			virtual_addresses_pages_num[actual_start>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
+
 			return (void *)actual_start;
 		}
 	}
 	return (void *) -1;
 }
 
-void kfree(void* virtual_address)
-{
+void kfree(void* virtual_address) {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
-	panic("kfree() is not implemented yet...!!");
+	//panic("kfree() is not implemented yet...!!");
+	//cprintf("va ptr %d\n", virtual_address);
+	uint32 va = (uint32) virtual_address;
+	//cprintf("va after cast %d\n", va);
+	if (va < KERNEL_HEAP_START || va > KERNEL_HEAP_MAX) {
+		panic("invalid virtual address");
+	}
 
+	if (va < segBreak && va < rLimit) {
+	//	cprintf("to block");
+		free_block(virtual_address);
+	} else if (va > rLimit + 4) {
+
+	//	cprintf("to page\n");
+
+		uint32 num_of_pages = virtual_addresses_pages_num[va >> 12];
+//		cprintf("num_of_pages%d \n ",virtual_addresses_pages_num[va>>12]);
+		//cprintf(" va : %d,    va of allocated in alloc %d\n", va,virtual_addresses_pages_num[va >> 12]);
+		uint32 actual_start_free = va;
+		//cprintf("num of free before %d\n",LIST_SIZE(&MemFrameLists.free_frame_list));
+		while (num_of_pages) {
+			uint32* ptr_page_table = NULL;
+			struct FrameInfo *ptr_frame = get_frame_info(ptr_page_directory, va,
+					&ptr_page_table);
+
+			free_frame(ptr_frame);
+			unmap_frame(ptr_page_directory, va);
+
+
+			va = va + PAGE_SIZE;
+			//cprintf("free block %d\n", num_of_pages);
+			num_of_pages--;
+
+		}
+		virtual_addresses_pages_num[actual_start_free >> 12] = 0;
+		//cprintf("actual add %d\n", actual_start_free);
+
+		//cprintf("num of free after %d\n",LIST_SIZE(&MemFrameLists.free_frame_list));
+	} else {
+		panic("invalid virtual address");
+	}
 	//you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
 

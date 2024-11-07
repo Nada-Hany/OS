@@ -44,4 +44,5 @@ int numOfKheapVACalls ;
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segBreak, rLimit;
 uint32 virtual_addresses[1<<20];
+uint32 virtual_addresses_pages_num [1<<20];
 #endif // FOS_KERN_KHEAP_H_
