@@ -1892,7 +1892,7 @@ int test_kheap_virt_addr()
 			if (retrievedVA != 0)
 			{
 				if (correct)
-				{ correct = 0; cprintf("4.1 Wrong kheap_virtual_address\n"); }
+				{ correct = 0; cprintf("4.1 Wrong kheap_virtual_address\n retrieved va: %x]n", retrievedVA); }
 			}
 
 		}
