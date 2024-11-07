@@ -90,15 +90,26 @@ void* sbrk(int numOfPages)
 
 int num_of_unmapped_pages(uint32 start_va){
 	int num = 0;
-	while(start_va<KERNEL_HEAP_MAX){
-		if(kheap_physical_address(start_va) != 0){
-			start_va = start_va + PAGE_SIZE;
-			continue;
-		}
+	while(start_va<KERNEL_HEAP_MAX && kheap_physical_address(start_va) == 0){
 		num = num + 1;
 		start_va = start_va + PAGE_SIZE;
 	}
 	return num;
+}
+void allocate_pages(uint32 start_va,uint32 size){
+	int num_of_pages=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	while(num_of_pages){
+		uint32 to_map_page=start_va;
+		if(num_of_pages==1)
+			to_map_page=to_map_page+(size%PAGE_SIZE);
+
+		struct FrameInfo *ptr_frame_info ;
+		allocate_frame(&ptr_frame_info);
+
+		map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+		num_of_pages--;
+		start_va=start_va+PAGE_SIZE;
+	}
 }
 void* kmalloc(unsigned int size)
 {
@@ -114,37 +125,27 @@ void* kmalloc(unsigned int size)
 			uint32 va = rLimit + PAGE_SIZE;
 
 			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
-			int unmapped_pages=num_of_unmapped_pages(va);
-			if(free_frames*PAGE_SIZE<size || unmapped_pages*PAGE_SIZE<size)
-				return NULL;
 
-			int pages_to_alloc = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-			//cprintf ("pages_to_alloc %d\n",pages_to_alloc);
-			int found_start=0;
 			uint32 actual_start=0;
 
-			while(pages_to_alloc){
-				uint32 to_map_page = va;
-				if(kheap_physical_address(to_map_page) != 0){
+			while(va<KERNEL_HEAP_MAX){
+				if(kheap_physical_address(va) != 0){
 					va = va + PAGE_SIZE;
 					continue;
 				}
-				if(PAGE_SIZE>size)
-					to_map_page = to_map_page + size;
+				int consecutive_free_pages=num_of_unmapped_pages(va);
 
-				if(!found_start){
-					actual_start=to_map_page;
-					found_start=1;
+				if(consecutive_free_pages*PAGE_SIZE>=size){
+					actual_start=va;
+					break;
 				}
+				va=va+consecutive_free_pages*PAGE_SIZE;
 
-				struct FrameInfo *ptr_frame_info ;
-				allocate_frame(&ptr_frame_info);
-
-				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
-
-				va = va + PAGE_SIZE;
-				pages_to_alloc=pages_to_alloc-1;
 			}
+			if(actual_start==0 || free_frames*PAGE_SIZE<size)
+				return NULL;
+
+			allocate_pages(actual_start,size);
 			virtual_addresses_pages_num[actual_start>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
 
