@@ -90,26 +90,15 @@ void* sbrk(int numOfPages)
 
 int num_of_unmapped_pages(uint32 start_va){
 	int num = 0;
-	while(start_va<KERNEL_HEAP_MAX && kheap_physical_address(start_va) == 0){
+	while(start_va<KERNEL_HEAP_MAX){
+		if(kheap_physical_address(start_va) != 0){
+			start_va = start_va + PAGE_SIZE;
+			continue;
+		}
 		num = num + 1;
 		start_va = start_va + PAGE_SIZE;
 	}
 	return num;
-}
-void allocate_pages(uint32 start_va,uint32 size){
-	int num_of_pages=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-	while(num_of_pages){
-		uint32 to_map_page=start_va;
-		if(num_of_pages==1)
-			to_map_page=to_map_page+(size%PAGE_SIZE);
-
-		struct FrameInfo *ptr_frame_info ;
-		allocate_frame(&ptr_frame_info);
-
-		map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
-		num_of_pages--;
-		start_va=start_va+PAGE_SIZE;
-	}
 }
 void* kmalloc(unsigned int size)
 {
@@ -125,27 +114,37 @@ void* kmalloc(unsigned int size)
 			uint32 va = rLimit + PAGE_SIZE;
 
 			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
+			int unmapped_pages=num_of_unmapped_pages(va);
+			if(free_frames*PAGE_SIZE<size || unmapped_pages*PAGE_SIZE<size)
+				return NULL;
 
+			int pages_to_alloc = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			//cprintf ("pages_to_alloc %d\n",pages_to_alloc);
+			int found_start=0;
 			uint32 actual_start=0;
 
-			while(va<KERNEL_HEAP_MAX){
-				if(kheap_physical_address(va) != 0){
+			while(pages_to_alloc){
+				uint32 to_map_page = va;
+				if(kheap_physical_address(to_map_page) != 0){
 					va = va + PAGE_SIZE;
 					continue;
 				}
-				int consecutive_free_pages=num_of_unmapped_pages(va);
+				if(PAGE_SIZE>size)
+					to_map_page = to_map_page + size;
 
-				if(consecutive_free_pages*PAGE_SIZE>=size){
-					actual_start=va;
-					break;
+				if(!found_start){
+					actual_start=to_map_page;
+					found_start=1;
 				}
-				va=va+consecutive_free_pages*PAGE_SIZE;
 
+				struct FrameInfo *ptr_frame_info ;
+				allocate_frame(&ptr_frame_info);
+
+				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+
+				va = va + PAGE_SIZE;
+				pages_to_alloc=pages_to_alloc-1;
 			}
-			if(actual_start==0 || free_frames*PAGE_SIZE<size)
-				return NULL;
-
-			allocate_pages(actual_start,size);
 			virtual_addresses_pages_num[actual_start>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
 
@@ -238,11 +237,7 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
 	uint32 offset = PGOFF(physical_address);
-	uint32 va = virtual_addresses[physical_address>>12] & ~0xFFF;
-	if(va!=0){
-		va+=offset;
-	}
-	return va;
+	return virtual_addresses[physical_address>>12]+offset;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
 	//panic("kheap_virtual_address() is not implemented yet...!!");
@@ -269,6 +264,82 @@ void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
 	// Write your code here, remove the panic and write your code
+
+	if (virtual_address == NULL && new_size == 0)
+			return NULL;
+
+	if (new_size == 0){
+		kfree(virtual_address);
+		return NULL;
+	}
+
+	if(virtual_address == NULL)
+		return kmalloc(new_size);
+
+
+	uint32 va = (uint32) virtual_address;
+	uint32 old_pages = virtual_addresses_pages_num[va >> 12];
+	uint32 new_pages = (new_size/PAGE_SIZE) + ((new_size%PAGE_SIZE!=0)?1:0);
+
+	bool to_block_allocation = 0;
+
+	uint32 old_size = old_pages * PAGE_SIZE;
+	char* old_ptr = (char*)virtual_address;
+	char tmp[old_size];
+	for (uint32 i = 0; i < old_size; i++){
+		tmp[i] = old_ptr[i];
+	}
+
+	// lw kan f el block allocation w hay-switch l page hageb el old data ezay
+	// lw address block haygy mn awel el header wla awelo
+	if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		to_block_allocation = 1;
+
+	// was in block allocation
+	if (va < segBreak && va < rLimit ) {
+		if(to_block_allocation)
+			return realloc_block_FF(virtual_address, new_size);
+		else{
+
+		}
+
+	}
+	// was in page allocation
+	else if (va > rLimit + 4) {
+
+		if(to_block_allocation){
+			// el data elly kanet 3nd el pages aktr mn el el ynf3 tt7t 3nd el block
+			kfree(virtual_address);
+			char* new_address = (char*) alloc_block_FF(new_size);
+			for (uint32 i = 0; i < new_size; i++){
+				new_address[i] = tmp[i];
+			}
+			return new_address;
+
+		}else{
+			// reallocating in page section
+			// to bigger size
+			if(new_pages >= old_pages){
+
+				kfree(virtual_address);
+				void * new_address = kmalloc(new_size);
+				for (uint32 i = 0; i < old_size; i++){
+					new_address[i] = tmp[i];
+				}
+				return new_address;
+
+			}
+			//lw h reallocate l smaller size el data msh katkfy
+			else{
+
+			}
+		}
+
+
+	} else {
+		panic("invalid virtual address");
+	}
+
 	return NULL;
-	panic("krealloc() is not implemented yet...!!");
+//	panic("krealloc() is not implemented yet...!!");
 }
