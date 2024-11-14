@@ -151,7 +151,15 @@ void fault_handler(struct Trapframe *tf)
 			//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
 			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
 			//your code is here
-
+			if(fault_va >= USER_LIMIT)
+			{
+				env_exit();
+			}
+			int perms = pt_get_page_permissions(faulted_env->env_page_directory, fault_va);
+			if ((tf->tf_err == FEC_WR) && !(perms & PERM_WRITEABLE))
+			{
+					env_exit();
+			}
 			/*============================================================================================*/
 		}
 
@@ -181,7 +189,6 @@ void fault_handler(struct Trapframe *tf)
 		//		cprintf("\nPage working set AFTER fault handler...\n");
 		//		env_page_ws_print(curenv);
 
-
 	}
 
 	/*************************************************************/
@@ -189,7 +196,6 @@ void fault_handler(struct Trapframe *tf)
 	tlbflush();
 	/*************************************************************/
 }
-
 //=========================
 // [2] TABLE FAULT HANDLER:
 //=========================
@@ -208,12 +214,22 @@ void table_fault_handler(struct Env * curenv, uint32 fault_va)
 	}
 #endif
 }
-
 //=========================
 // [3] PAGE FAULT HANDLER:
 //=========================
+bool is_stack_or_heap_page(uint32 va)
+{
+	return ((va >= USER_HEAP_START && va < USER_HEAP_MAX) || (va >= USTACKBOTTOM  && va < USTACKTOP));
+}
+void free_frame_and_exit(struct Env * faulted_env, uint32 fault_va, struct FrameInfo *frame_info)
+{
+	free_frame(frame_info);
+	unmap_frame(faulted_env->env_page_directory, fault_va);
+    env_exit();
+}
 void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 {
+
 #if USE_KHEAP
 		struct WorkingSetElement *victimWSElement = NULL;
 		uint32 wsSize = LIST_SIZE(&(faulted_env->page_WS_list));
@@ -224,12 +240,32 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 	if(wsSize < (faulted_env->page_WS_max_size))
 	{
+
 		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
-		panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
-
+		//panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
 		//refer to the project presentation and documentation for details
+
+	    struct FrameInfo *ptr_new_frame;
+	    allocate_frame(&ptr_new_frame);
+	    map_frame(faulted_env->env_page_directory, ptr_new_frame,  fault_va, PERM_USER | PERM_WRITEABLE);
+        int pagefile_exists = pf_read_env_page(faulted_env, (void*)fault_va);
+        if (pagefile_exists == E_PAGE_NOT_EXIST_IN_PF && !(is_stack_or_heap_page(fault_va)))
+        {
+        	free_frame_and_exit(faulted_env, fault_va, ptr_new_frame);
+
+        }
+	    struct WorkingSetElement* working_set_element = env_page_ws_list_create_element(faulted_env, fault_va);
+		LIST_INSERT_TAIL(&(faulted_env->page_WS_list), working_set_element);
+		if (LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
+		{
+			faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+		}
+		else
+		{
+			faulted_env->page_last_WS_element = NULL;
+		}
 	}
 	else
 	{
