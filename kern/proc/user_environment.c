@@ -177,7 +177,6 @@ struct Env* env_create(char* user_program_name, unsigned int page_WS_size, unsig
 		e->percentage_of_WS_pages_to_be_removed = percent_WS_pages_to_remove;
 
 	initialize_environment(e, ptr_user_page_directory, phys_user_page_directory);
-
 	// We want to load the program into the user virtual space
 	// each program is constructed from one or more segments,
 	// each segment has the following information grouped in "struct ProgramSegment"
@@ -867,13 +866,23 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory)
 #if USE_KHEAP
 	//TODO: [PROJECT'24.MS2 - #07] [2] FAULT HANDLER I - create_user_kern_stack
 	// Write your code here, remove the panic and write your code
-	panic("create_user_kern_stack() is not implemented yet...!!");
-
+	//panic("create_user_kern_stack() is not implemented yet...!!");
 	//allocate space for the user kernel stack.
 	//remember to leave its bottom page as a GUARD PAGE (i.e. not mapped)
 	//return a pointer to the start of the allocated space (including the GUARD PAGE)
 	//On failure: panic
-
+	//cprintf("\nin user kern stack\n");
+	void* stack_ptr =  kmalloc(KERNEL_STACK_SIZE);
+	if (stack_ptr == (void *)-1)
+	{
+		panic("Failed to allocate user kernal stack");
+	}
+	uint32* ptr_page_table = NULL;
+	get_page_table(ptr_user_page_directory,(uint32) stack_ptr, &ptr_page_table);
+	ptr_page_table[PTX(stack_ptr)] = ptr_page_table[PTX(stack_ptr)] & (~ PERM_PRESENT);
+	//unmap_frame(ptr_user_page_directory, (uint32) stack_ptr);
+	//cprintf("\nstack allocated\n");
+	return stack_ptr;
 
 #else
 	if (KERNEL_HEAP_MAX - __cur_k_stk < KERNEL_STACK_SIZE)
