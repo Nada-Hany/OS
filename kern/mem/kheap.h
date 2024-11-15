@@ -6,6 +6,7 @@
 #endif
 
 #include <inc/types.h>
+#include <inc/memlayout.h>
 
 
 /*2017*/
@@ -45,4 +46,11 @@ int numOfKheapVACalls ;
 uint32 start, segBreak, rLimit;
 uint32 virtual_addresses[1<<20];
 uint32 virtual_addresses_pages_num [1<<20];
+
+struct FreePage{
+	uint32 start_va;
+	uint32 num_of_free_pages;
+};
+
+struct FreePage free_consecutive_pages[((KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE)+2];
 #endif // FOS_KERN_KHEAP_H_
