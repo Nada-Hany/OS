@@ -1,5 +1,4 @@
 #include <inc/lib.h>
-
 //==================================================================================//
 //============================ REQUIRED FUNCTIONS ==================================//
 //==================================================================================//
@@ -16,6 +15,40 @@ void* sbrk(int increment)
 //=================================
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
+uint32 virtual_addresses_pages_num [1<<20];
+bool page_marked[NUM_OF_UHEAP_PAGES] = {0};
+
+int get_page_index(uint32 va)
+{
+	return (va - (myEnv->env_rLimit + PAGE_SIZE)) / PAGE_SIZE;
+}
+
+void mark_pages(uint32 start_va, uint32 size)
+{
+	//cprintf("in mark_pages\n");
+	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	while(num_of_pages--)
+	{
+		uint32 page_index = get_page_index(start_va);
+		page_marked[page_index] = 1;
+		start_va += PAGE_SIZE;
+	}
+}
+
+int num_of_unmapped_pages(uint32 start_va)
+{
+	//cprintf("in num_of_unmapped_pages\n");
+	int num = 0;
+	uint32 page_index = get_page_index(start_va);
+	//cprintf("%d\n", page_index);
+	while(start_va < USER_HEAP_MAX && !(page_marked[page_index]))
+	{
+		num = num + 1;
+		start_va = start_va + PAGE_SIZE;
+		page_index = get_page_index(start_va);
+	}
+	return num;
+}
 void* malloc(uint32 size)
 {
 	//==============================================================
@@ -24,11 +57,53 @@ void* malloc(uint32 size)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
-	return NULL;
+	//panic("malloc() is not implemented yet...!!");
+	//return NULL;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy
+	if(sys_isUHeapPlacementStrategyFIRSTFIT())
+	{
+		//cprintf("in malloc\n");
+		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		{
+			return alloc_block_FF(size);
+	    }
+		else
+		{
+			uint32 start_va = myEnv->env_rLimit + PAGE_SIZE;
+			uint32 final_va = 0;
+			while(start_va < USER_HEAP_MAX)
+			{
+				uint32 page_index = get_page_index(start_va);
+				if(page_marked[page_index])
+				{
+					start_va += PAGE_SIZE;
+					continue;
+				}
 
+				int consecutive_free_pages = num_of_unmapped_pages(start_va);
+				if(consecutive_free_pages*PAGE_SIZE >= size)
+				{
+					//cprintf("found\n");
+					//cprintf("%d\n", consecutive_free_pages);
+					//cprintf("%d\n", ((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0)));
+					final_va = start_va;
+					break;
+				}
+
+				start_va += (consecutive_free_pages*PAGE_SIZE);
+			}
+			if(final_va==0)
+				return NULL;
+
+			mark_pages(final_va, size);
+			sys_allocate_user_mem(final_va, size);
+			//cprintf("after sys_alloc\n");
+			virtual_addresses_pages_num[final_va>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			return (void *) final_va;
+		}
+	}
+	return (void *) -1;
 }
 
 //=================================

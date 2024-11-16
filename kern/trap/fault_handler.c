@@ -68,6 +68,7 @@ int8 num_repeated_fault  = 0;
 struct Env* last_faulted_env = NULL;
 void fault_handler(struct Trapframe *tf)
 {
+	//cprintf("newtest\n\n");
 	/******************************************************/
 	// Read processor's CR2 register to find the faulting address
 	uint32 fault_va = rcr2();
@@ -153,12 +154,18 @@ void fault_handler(struct Trapframe *tf)
 			//your code is here
 			if(fault_va >= USER_LIMIT)
 			{
+				//cprintf("in1\n");
 				env_exit();
 			}
 			int perms = pt_get_page_permissions(faulted_env->env_page_directory, fault_va);
-			if ((tf->tf_err == FEC_WR) && !(perms & PERM_WRITEABLE))
+			if ((perms & PERM_PRESENT) && !(perms & PERM_WRITEABLE))
 			{
+				    //cprintf("in2\n");
 					env_exit();
+			}
+			if(!(perms & PERM_MARKED))
+			{
+				env_exit();
 			}
 			/*============================================================================================*/
 		}
@@ -237,11 +244,9 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		int iWS =faulted_env->page_last_WS_index;
 		uint32 wsSize = env_page_ws_get_size(faulted_env);
 #endif
-
 	if(wsSize < (faulted_env->page_WS_max_size))
 	{
-
-		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
+		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize);
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
 		//panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
