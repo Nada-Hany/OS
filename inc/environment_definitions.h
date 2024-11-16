@@ -121,7 +121,7 @@ struct Env {
 
 	//=======================================================================
 	//TODO: [PROJECT'24.MS2 - #10] [3] USER HEAP - add suitable code here
-
+	uint32 env_start, env_segBreak, env_rLimit;
 	//=======================================================================
 	//for page file management
 	uint32* disk_env_pgdir;

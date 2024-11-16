@@ -142,8 +142,17 @@ void* sys_sbrk(int numOfPages)
 	return (void*)-1 ;
 	/*====================================*/
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
+	uint32 previous_segBreak = env->env_segBreak;
+	if(numOfPages>0){
 
+			uint32 increase = numOfPages * PAGE_SIZE;
+			if(increase + env->env_segBreak > env->env_rLimit){
+				return (void*)-1;
+			}
+			env->env_segBreak+=increase;
+	}
 
+	return (void *)env->env_segBreak;
 }
 
 //=====================================
