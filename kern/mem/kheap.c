@@ -57,7 +57,7 @@ void* sbrk(int numOfPages)
 	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
 	 */
-//	cprintf("sbrk called\n");
+//	cprintf("kheap_sbrk called\n");
 	uint32 previous_segBreak = segBreak;
 	if(numOfPages>0){
 		int free_frame_list_size = LIST_SIZE(&MemFrameLists.free_frame_list);
@@ -161,6 +161,7 @@ void* kmalloc(unsigned int size)
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 	if(isKHeapPlacementStrategyFIRSTFIT()){
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+//			cprintf("from kmalloc\n");
 			return alloc_block_FF(size);
 		}else{
 			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
