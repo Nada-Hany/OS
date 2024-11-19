@@ -41,6 +41,8 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		}
 		va = va + PAGE_SIZE;
 	}
+	for(int i=0;i<NUM_OF_UHEAP_PAGES;i++)
+		pages_alloc_in_WS_list[i]=NULL;
 	initialize_dynamic_allocator(daStart,initSizeToAllocate);
 	return 0;
 	//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
@@ -82,13 +84,13 @@ void* sbrk(int numOfPages)
 		}
 		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
 		uint32 *endptr=(uint32 *)daEnd;
-		cprintf("putting end block\n");
+//		cprintf("putting end block\n");
 		*endptr=1;
-		cprintf("putting end block 2\n");
+//		cprintf("putting end block 2\n");
 		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
-		cprintf("setted block data\n");
+//		cprintf("setted block data\n");
 		free_block((void*)previous_segBreak);
-		cprintf("freed block block\n");
+//		cprintf("freed block block\n");
 	}
 
 	return (void*)previous_segBreak;

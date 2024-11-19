@@ -34,6 +34,17 @@ void mark_pages(uint32 start_va, uint32 size)
 		start_va += PAGE_SIZE;
 	}
 }
+void unmark_pages(uint32 start_va, uint32 size)
+{
+	//cprintf("in mark_pages\n");
+	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	while(num_of_pages--)
+	{
+		uint32 page_index = get_page_index(start_va);
+		page_marked[page_index] = 0;
+		start_va += PAGE_SIZE;
+	}
+}
 
 int num_of_unmapped_pages(uint32 start_va)
 {
@@ -113,7 +124,20 @@ void free(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
-	panic("free() is not implemented yet...!!");
+	//panic("free() is not implemented yet...!!");
+	uint32 va = (uint32)virtual_address;
+
+	if(va>=USER_HEAP_START  && va<myEnv->env_segBreak){
+		free_block(virtual_address);
+	}else if(va>=myEnv->env_rLimit+PAGE_SIZE && va<USER_HEAP_MAX){
+		int num_of_pages = virtual_addresses_pages_num[va>>12];
+		unmark_pages(va,num_of_pages*PAGE_SIZE);
+		sys_free_user_mem(va,virtual_addresses_pages_num[va>>12]*PAGE_SIZE);
+		virtual_addresses_pages_num[va>>12]=0;
+	}else{
+		panic("invalid address\n");
+	}
+
 }
 
 

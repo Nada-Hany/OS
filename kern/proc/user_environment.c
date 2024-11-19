@@ -873,7 +873,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory)
 	//On failure: panic
 	//cprintf("\nin user kern stack\n");
 	void* stack_ptr =  kmalloc(KERNEL_STACK_SIZE);
-	if (stack_ptr == (void *)-1)
+	if (stack_ptr == NULL)
 	{
 		panic("Failed to allocate user kernal stack");
 	}

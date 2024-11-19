@@ -30,5 +30,5 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size);
 void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size);
 void move_user_mem(struct Env* e, uint32 src_virtual_address, uint32 dst_virtual_address, uint32 size);
 void __free_user_mem_with_buffering(struct Env* e, uint32 virtual_address, uint32 size);
-
+struct WorkingSetElement* pages_alloc_in_WS_list[NUM_OF_UHEAP_PAGES];
 #endif /* KERN_MEM_CHUNK_OPERATIONS_H_ */
