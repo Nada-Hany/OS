@@ -41,6 +41,8 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		}
 		va = va + PAGE_SIZE;
 	}
+	for(int i=0;i<NUM_OF_UHEAP_PAGES;i++)
+		pages_alloc_in_WS_list[i]=NULL;
 	initialize_dynamic_allocator(daStart,initSizeToAllocate);
 	return 0;
 	//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
