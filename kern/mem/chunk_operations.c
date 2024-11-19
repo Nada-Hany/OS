@@ -139,7 +139,7 @@ void* sys_sbrk(int numOfPages)
 	//TODO: [PROJECT'24.MS2 - #11] [3] USER HEAP - sys_sbrk
 	/*====================================*/
 	/*Remove this line before start coding*/
-	return (void*)-1 ;
+	//return (void*)-1 ;
 	/*====================================*/
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
 	uint32 previous_segBreak = env->env_segBreak;
@@ -149,7 +149,25 @@ void* sys_sbrk(int numOfPages)
 			if(increase + env->env_segBreak > env->env_rLimit){
 				return (void*)-1;
 			}
+			//move sbrk
 			env->env_segBreak+=increase;
+			//mark pages
+			uint32 *page_table_ptr;
+			int num_of_pages = numOfPages;
+			uint32 virtual_address = previous_segBreak;
+			while(num_of_pages--)
+			{
+				if(get_page_table(env->env_page_directory, virtual_address, &page_table_ptr) == TABLE_NOT_EXIST)
+				{
+					//cprintf("creating new pt\n");
+					page_table_ptr = create_page_table(env->env_page_directory, virtual_address);
+				}
+				pt_set_page_permissions(env->env_page_directory, virtual_address, PERM_MARKED, 0);
+				//int perms = pt_get_page_permissions(e->env_page_directory, virtual_address);
+				//cprintf("perms : %d\n", perms);
+				virtual_address += PAGE_SIZE;
+			}
+
 	}
 
 	return (void *)env->env_segBreak;
