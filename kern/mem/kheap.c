@@ -82,14 +82,14 @@ void* sbrk(int numOfPages)
 				}
 				va = va + PAGE_SIZE;
 		}
-		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
-		uint32 *endptr=(uint32 *)daEnd;
+//		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
+//		uint32 *endptr=(uint32 *)daEnd;
 //		cprintf("putting end block\n");
-		*endptr=1;
+//		*endptr=1;
 //		cprintf("putting end block 2\n");
-		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
+//		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
 //		cprintf("setted block data\n");
-		free_block((void*)previous_segBreak);
+//		free_block((void*)previous_segBreak);
 //		cprintf("freed block block\n");
 	}
 
