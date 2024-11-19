@@ -141,6 +141,7 @@ void* sys_sbrk(int numOfPages)
 	/*Remove this line before start coding*/
 	//return (void*)-1 ;
 	/*====================================*/
+//	cprintf("in user sbrk\n");
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
 	uint32 previous_segBreak = env->env_segBreak;
 	if(numOfPages>0){
@@ -169,8 +170,8 @@ void* sys_sbrk(int numOfPages)
 			}
 
 	}
-
-	return (void *)env->env_segBreak;
+//	cprintf("sbrk_user will return here\n");
+	return (void *)previous_segBreak;
 }
 
 //=====================================

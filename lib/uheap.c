@@ -9,6 +9,7 @@
 /*2023*/
 void* sbrk(int increment)
 {
+//	cprintf("sbrk_user\n");
 	return (void*) sys_sbrk(increment);
 }
 
@@ -77,6 +78,7 @@ void* malloc(uint32 size)
 		//cprintf("in malloc\n");
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
+//			cprintf("block allocator\n");
 			return alloc_block_FF(size);
 	    }
 		else
