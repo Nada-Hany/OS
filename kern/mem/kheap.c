@@ -262,14 +262,45 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 
 
 
-void reallocate_loaded_frames(struct FrameInfo **frames_ptr){
+void reallocate_loaded_frames(uint32 new_start, uint32 old_start, int new_size, int old_size){
 
+	for(int i=0; i<old_size; i++){
+		uint32* ptr_page_table = NULL;
+		struct FrameInfo *old_frame = get_frame_info(ptr_page_directory, old_start,
+							&ptr_page_table);
+		unmap_frame(ptr_page_directory, old_start);
+
+		map_frame(ptr_page_directory, old_frame, new_start, PERM_WRITEABLE);
+
+		new_start += PAGE_SIZE;
+		old_start += PAGE_SIZE;
+
+	}
+	memset((void *) new_start, 0, (new_size-old_size)*PAGE_SIZE );
 
 }
 
-void* getunlocatedFrames(int framesNumber){
+void * getunlocatedFrames(int framesNumber){
+	int count = 0;
+	uint32 va = KERNEL_HEAP_MAX;
+	for(int i=0; i<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE; i++){
+		uint32 *ptr_page_table;
+		get_page_table(ptr_page_directory, va, &ptr_page_table);
+		uint32 page_table_entry = ptr_page_table[PTX(va)];
 
+		if((page_table_entry & PERM_PRESENT) == PERM_PRESENT)
+			count = 0;
+		else
+			count++;
+
+		if(count == framesNumber)
+			return (void *) va - (PAGE_SIZE * framesNumber);
+
+		va += PAGE_SIZE;
+	}
+	return NULL;
 }
+
 
 void *krealloc(void *virtual_address, uint32 new_size)
 {
@@ -287,18 +318,15 @@ void *krealloc(void *virtual_address, uint32 new_size)
 	if(virtual_address == NULL)
 		return kmalloc(new_size);
 
-
 	uint32 va = (uint32) virtual_address;
 	uint32 old_pages = virtual_addresses_pages_num[va >> 12];
 	uint32 old_size = old_pages * PAGE_SIZE;
 	uint32 new_pages = (new_size/PAGE_SIZE) + ((new_size%PAGE_SIZE!=0)?1:0);
 
-
-
 	// lw kan f el block allocation w hay-switch l page hageb el old data ezay
 	// lw address block haygy mn awel el header wla awelo
 
-	// check if process will reallocate to a block or not
+	// check if process will reallocate as a block or not
 	bool to_block_allocation = 0;
 	if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		to_block_allocation = 1;
@@ -316,7 +344,6 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			free_block(virtual_address);
 			return new_address ;
 		}
-
 	}
 	// was in page allocation
 	else if (va > rLimit + 4) {
@@ -338,6 +365,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			// to bigger size
 			if(new_pages >= old_pages){
 
+				new_address = getunlocatedFrames(new_pages);
+				if(new_address == NULL)
+					return NULL;
+				reallocate_loaded_frames((uint32)new_address, va, new_pages, old_pages);
 			}
 			// to smaller size
 			else{;
