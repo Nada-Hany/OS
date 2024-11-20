@@ -260,6 +260,17 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 //	A call with virtual_address = null is equivalent to kmalloc().
 //	A call with new_size = zero is equivalent to kfree().
 
+
+
+void reallocate_loaded_frames(struct FrameInfo **frames_ptr){
+
+
+}
+
+void* getunlocatedFrames(int framesNumber){
+
+}
+
 void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
@@ -279,41 +290,47 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 	uint32 va = (uint32) virtual_address;
 	uint32 old_pages = virtual_addresses_pages_num[va >> 12];
+	uint32 old_size = old_pages * PAGE_SIZE;
 	uint32 new_pages = (new_size/PAGE_SIZE) + ((new_size%PAGE_SIZE!=0)?1:0);
 
-	bool to_block_allocation = 0;
 
-	uint32 old_size = old_pages * PAGE_SIZE;
-	char* old_ptr = (char*)virtual_address;
-	char tmp[old_size];
-	for (uint32 i = 0; i < old_size; i++){
-		tmp[i] = old_ptr[i];
-	}
 
 	// lw kan f el block allocation w hay-switch l page hageb el old data ezay
 	// lw address block haygy mn awel el header wla awelo
+
+	// check if process will reallocate to a block or not
+	bool to_block_allocation = 0;
 	if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		to_block_allocation = 1;
+
+	void* new_address = NULL;
 
 	// was in block allocation
 	if (va < segBreak && va < rLimit ) {
 		if(to_block_allocation)
 			return realloc_block_FF(virtual_address, new_size);
 		else{
-
+			uint32 old_block_size = get_block_size(virtual_address);
+			new_address = kmalloc(new_size);
+			memcpy(new_address , virtual_address, old_block_size);
+			free_block(virtual_address);
+			return new_address ;
 		}
 
 	}
 	// was in page allocation
 	else if (va > rLimit + 4) {
+		char* new_ptr = (char*) new_address;
+		char* old_ptr = (char *)virtual_address;
 
 		if(to_block_allocation){
-			// el data elly kanet 3nd el pages aktr mn el el ynf3 tt7t 3nd el block
+			uint32 old_block_size = get_block_size(virtual_address);
+			char tmp[old_block_size];
+			for (uint32 i = 0; i < old_block_size; i++)
+				 tmp[i] = old_ptr[i];
 			kfree(virtual_address);
-			char* new_address = (char*) alloc_block_FF(new_size);
-			for (uint32 i = 0; i < new_size; i++){
-				new_address[i] = tmp[i];
-			}
+			new_address = (void *) alloc_block_FF(new_size);
+			memcpy(new_address, (void*)tmp, old_size);
 			return new_address;
 
 		}else{
@@ -321,17 +338,13 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			// to bigger size
 			if(new_pages >= old_pages){
 
-				kfree(virtual_address);
-				void * new_address = kmalloc(new_size);
-				for (uint32 i = 0; i < old_size; i++){
-					new_address[i] = tmp[i];
-				}
-				return new_address;
-
 			}
-			//lw h reallocate l smaller size el data msh katkfy
-			else{
-
+			// to smaller size
+			else{;
+				kfree(virtual_address);
+				new_address = kmalloc(new_size);
+				memcpy(new_address, virtual_address, new_size);
+				return new_address;
 			}
 		}
 
