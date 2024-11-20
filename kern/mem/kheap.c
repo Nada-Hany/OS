@@ -21,6 +21,12 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	memset(virtual_addresses, 0, sizeof(virtual_addresses));
 	if(segBreak>rLimit)
 		panic("initial size exceeds the given limit");
+
+	uint32 start_page_alloc_va=rLimit+PAGE_SIZE;
+	uint32 num_of_free_pages=(KERNEL_HEAP_MAX-start_page_alloc_va)/PAGE_SIZE +
+			((KERNEL_HEAP_MAX-start_page_alloc_va)%PAGE_SIZE!=0?1:0);
+	free_consecutive_pages[0]=(struct FreePage){start_page_alloc_va,num_of_free_pages};
+
 	uint32 va = start;
 	while(va<segBreak){
 		struct FrameInfo *ptr_frame_info ;
@@ -74,8 +80,17 @@ void* sbrk(int numOfPages)
 				}
 				va = va + PAGE_SIZE;
 		}
+		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
+		uint32 *endptr=(uint32 *)daEnd;
+		cprintf("putting end block\n");
+		*endptr=1;
+		cprintf("putting end block 2\n");
+		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
+		cprintf("setted block data\n");
+		free_block((void*)previous_segBreak);
+		cprintf("freed block block\n");
 	}
-//	cprintf("sbrk finished\n");
+
 	return (void*)previous_segBreak;
 	//MS2: COMMENT THIS LINE BEFORE START CODING==========
 	//return (void*)-1 ;
@@ -90,16 +105,53 @@ void* sbrk(int numOfPages)
 
 int num_of_unmapped_pages(uint32 start_va){
 	int num = 0;
-	while(start_va<KERNEL_HEAP_MAX){
-		if(kheap_physical_address(start_va) != 0){
-			start_va = start_va + PAGE_SIZE;
-			continue;
-		}
+	while(start_va<KERNEL_HEAP_MAX && kheap_physical_address(start_va) == 0){
 		num = num + 1;
 		start_va = start_va + PAGE_SIZE;
 	}
 	return num;
 }
+void allocate_pages(uint32 start_va,uint32 size){
+	int num_of_pages=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	while(num_of_pages){
+		uint32 to_map_page=start_va;
+		if(num_of_pages==1)
+			to_map_page=to_map_page+(size%PAGE_SIZE);
+
+		struct FrameInfo *ptr_frame_info ;
+		allocate_frame(&ptr_frame_info);
+
+		map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+		num_of_pages--;
+		start_va=start_va+PAGE_SIZE;
+	}
+}
+
+void remove_from_free_consecutive_pages(int start){
+	for(int j=start;j<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE;j++){
+		if(free_consecutive_pages[j+1].start_va==0){
+			free_consecutive_pages[j].start_va=0;
+			free_consecutive_pages[j].num_of_free_pages=0;
+			break;
+		}
+
+		struct FreePage temp=free_consecutive_pages[j+1];
+		free_consecutive_pages[j+1]=free_consecutive_pages[j];
+		free_consecutive_pages[j]=temp;
+	}
+}
+
+void insertion_sort(int ind){
+	for(int i=ind;i>0;i--){
+		if(free_consecutive_pages[i].start_va>free_consecutive_pages[i-1].start_va)
+			break;
+		struct FreePage temp=free_consecutive_pages[i-1];
+		free_consecutive_pages[i-1]=free_consecutive_pages[i];
+		free_consecutive_pages[i]=temp;
+
+	}
+}
+
 void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
@@ -111,40 +163,28 @@ void* kmalloc(unsigned int size)
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
 			return alloc_block_FF(size);
 		}else{
-			uint32 va = rLimit + PAGE_SIZE;
-
 			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
-			int unmapped_pages=num_of_unmapped_pages(va);
-			if(free_frames*PAGE_SIZE<size || unmapped_pages*PAGE_SIZE<size)
-				return NULL;
 
-			int pages_to_alloc = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-			//cprintf ("pages_to_alloc %d\n",pages_to_alloc);
-			int found_start=0;
 			uint32 actual_start=0;
 
-			while(pages_to_alloc){
-				uint32 to_map_page = va;
-				if(kheap_physical_address(to_map_page) != 0){
-					va = va + PAGE_SIZE;
-					continue;
+			for(int i=0;i<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE;i++){
+				if(free_consecutive_pages[i].start_va==0)
+					break;
+				if(free_consecutive_pages[i].num_of_free_pages*PAGE_SIZE>=size && free_frames*PAGE_SIZE>=size){
+					actual_start=free_consecutive_pages[i].start_va;
+					free_consecutive_pages[i].num_of_free_pages-=((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0));
+					free_consecutive_pages[i].start_va+=(((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0))*PAGE_SIZE);
+					if(free_consecutive_pages[i].num_of_free_pages<=0){
+						remove_from_free_consecutive_pages(i);
+
+					}
+					break;
 				}
-				if(PAGE_SIZE>size)
-					to_map_page = to_map_page + size;
-
-				if(!found_start){
-					actual_start=to_map_page;
-					found_start=1;
-				}
-
-				struct FrameInfo *ptr_frame_info ;
-				allocate_frame(&ptr_frame_info);
-
-				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
-
-				va = va + PAGE_SIZE;
-				pages_to_alloc=pages_to_alloc-1;
 			}
+			if(actual_start==0)
+				return NULL;
+
+			allocate_pages(actual_start,size);
 			virtual_addresses_pages_num[actual_start>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
 
@@ -154,29 +194,62 @@ void* kmalloc(unsigned int size)
 	return (void *) -1;
 }
 
+void add_to_free_pages(uint32 va,uint32 num_of_pages){
+	int merge_after_ind=-1;
+	int merge_before_ind=-1;
+
+	for(int i=0;i<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE;i++){
+		if(free_consecutive_pages[i].start_va==0)
+			break;
+
+		if(va+num_of_pages*PAGE_SIZE==free_consecutive_pages[i].start_va){
+			merge_after_ind=i;
+			num_of_pages+=free_consecutive_pages[i].num_of_free_pages;
+		}
+
+		if(free_consecutive_pages[i].start_va+free_consecutive_pages[i].num_of_free_pages*PAGE_SIZE==va)
+			merge_before_ind=i;
+
+	}
+	if(merge_after_ind!=-1){
+		remove_from_free_consecutive_pages(merge_after_ind);
+	}
+	if(merge_before_ind!=-1)
+		free_consecutive_pages[merge_before_ind].num_of_free_pages+=num_of_pages;
+	else{
+
+		int last_ind=0;
+		for(int i=0;i<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE;i++){
+			if(free_consecutive_pages[i].start_va==0){
+				free_consecutive_pages[i]=(struct FreePage) {va,num_of_pages};
+				last_ind=i;
+				break;
+			}
+		}
+
+		insertion_sort(last_ind);
+
+	}
+
+}
 void kfree(void* virtual_address) {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
 	//panic("kfree() is not implemented yet...!!");
-	//cprintf("va ptr %d\n", virtual_address);
 	uint32 va = (uint32) virtual_address;
-	//cprintf("va after cast %d\n", va);
 	if (va < KERNEL_HEAP_START || va > KERNEL_HEAP_MAX) {
 		panic("invalid virtual address");
 	}
 
 	if (va < segBreak && va < rLimit) {
-	//	cprintf("to block");
 		free_block(virtual_address);
 	} else if (va > rLimit + 4) {
 
-	//	cprintf("to page\n");
 
 		uint32 num_of_pages = virtual_addresses_pages_num[va >> 12];
-//		cprintf("num_of_pages%d \n ",virtual_addresses_pages_num[va>>12]);
-		//cprintf(" va : %d,    va of allocated in alloc %d\n", va,virtual_addresses_pages_num[va >> 12]);
+
 		uint32 actual_start_free = va;
-		//cprintf("num of free before %d\n",LIST_SIZE(&MemFrameLists.free_frame_list));
+
 		while (num_of_pages) {
 			uint32* ptr_page_table = NULL;
 			struct FrameInfo *ptr_frame = get_frame_info(ptr_page_directory, va,
@@ -187,14 +260,15 @@ void kfree(void* virtual_address) {
 
 
 			va = va + PAGE_SIZE;
-			//cprintf("free block %d\n", num_of_pages);
+
 			num_of_pages--;
 
 		}
+		add_to_free_pages(actual_start_free,virtual_addresses_pages_num[actual_start_free >> 12]);
 		virtual_addresses_pages_num[actual_start_free >> 12] = 0;
-		//cprintf("actual add %d\n", actual_start_free);
 
-		//cprintf("num of free after %d\n",LIST_SIZE(&MemFrameLists.free_frame_list));
+
+
 	} else {
 		panic("invalid virtual address");
 	}
@@ -205,12 +279,9 @@ void kfree(void* virtual_address) {
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
 {
-//	cprintf("va:0x%x\n",virtual_address);
-	//getting the page table start address
-//	uint32 page_directory_entry = ptr_page_directory[PDX(virtual_address)];
-//	uint32 page_directory_frame_address = EXTRACT_ADDRESS(page_directory_entry);
+
 	uint32 *page_table_ptr;
-//	get_page_table(ptr_page_directory,virtual_address,page_table_ptr);
+
 	if(get_page_table(ptr_page_directory,virtual_address,&page_table_ptr) == TABLE_NOT_EXIST){
 		return 0;
 	}
@@ -237,7 +308,11 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 unsigned int kheap_virtual_address(unsigned int physical_address)
 {
 	uint32 offset = PGOFF(physical_address);
-	return virtual_addresses[physical_address>>12]+offset;
+	uint32 va = virtual_addresses[physical_address>>12] & ~0xFFF;
+	if(va!=0){
+		va+=offset;
+	}
+	return va;
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
 	//panic("kheap_virtual_address() is not implemented yet...!!");
