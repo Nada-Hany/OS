@@ -164,7 +164,7 @@ void fault_handler(struct Trapframe *tf)
 				    //cprintf("in2\n");
 					env_exit();
 			}
-			if(!(perms & PERM_MARKED))
+			if(!(perms & PERM_MARKED) && (fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX))
 			{
 				env_exit();
 			}
