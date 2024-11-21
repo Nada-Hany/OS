@@ -109,11 +109,26 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 		uint8 isWritable, void* virtual_address) {
 	//TODO: [PROJECT'24.MS2 - #19] [4] SHARED MEMORY [KERNEL SIDE] - createSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("createSharedObject is not implemented yet");
+	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 	struct Env* myenv = get_cpu_proc(); //The calling environment
+
+	//search if obj is already exist
+	if (get_share(ownerID, shareName) != NULL) {
+		return E_SHARED_MEM_EXISTS;
+	}
+
+	uint32 num_of_pages = ROUNDUP(size,PAGE_SIZE) / PAGE_SIZE;
+
+	// TODO check if no mem
+	if(num_of_pages<LIST_SIZE(&MemFrameLists.free_frame_list)){
+		return E_NO_SHARE;
+	}
+
 	//create and init shared obj
-	struct Share* shared_obj = create_share(ownerID, shareName, size,isWritable);
+	struct Share* shared_obj = create_share(ownerID, shareName, size,
+			isWritable);
+
 	//add shared obj to shared list (lock -> insert ->release)
 	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
 	if (!lock_already_held) {
@@ -125,15 +140,27 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	if (!lock_already_held) {
 		release_spinlock(&AllShares.shareslock);
 	}
-	// ataked mn size
-	uint32 num_of_pages=ROUNDUP((size/PAGE_SIZE),PAGE_SIZE);
-//	while (num_of_pages){
-//		struct FrameInfo *ptr_frame_info ;
-//				allocate_frame(&ptr_frame_info);
-//
-//				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
-//				num_of_pages--;
-//	}
+
+	uint32 start_va = (uint32) virtual_address;
+	int index_of_framesStorage = 0;
+	while (num_of_pages) {
+
+		struct FrameInfo *ptr_frame_info;
+
+		// allocate new frame ,map this frame to va in env_page_dir , add this frame to frames storage
+		allocate_frame(&ptr_frame_info);
+		map_frame(myenv->env_page_directory, ptr_frame_info, start_va,
+		PERM_WRITEABLE);
+
+		shared_obj->framesStorage[index_of_framesStorage] = ptr_frame_info;
+
+		start_va += PAGE_SIZE;
+		num_of_pages--;
+		index_of_framesStorage++;
+	}
+	shared_obj->ID=(uint32)virtual_address& 0x7FFFFFFF;
+
+	return shared_obj->ID;
 }
 
 
