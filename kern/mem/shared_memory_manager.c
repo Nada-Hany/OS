@@ -105,14 +105,35 @@ struct Share* get_share(int32 ownerID, char* name)
 //=========================
 // [4] Create Share Object:
 //=========================
-int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWritable, void* virtual_address)
-{
+int createSharedObject(int32 ownerID, char* shareName, uint32 size,
+		uint8 isWritable, void* virtual_address) {
 	//TODO: [PROJECT'24.MS2 - #19] [4] SHARED MEMORY [KERNEL SIDE] - createSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
-
 	struct Env* myenv = get_cpu_proc(); //The calling environment
+	//create and init shared obj
+	struct Share* shared_obj = create_share(ownerID, shareName, size,isWritable);
+	//add shared obj to shared list (lock -> insert ->release)
+	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+	if (!lock_already_held) {
+		acquire_spinlock(&AllShares.shareslock);
+	}
+
+	LIST_INSERT_HEAD(&AllShares.shares_list, shared_obj);
+
+	if (!lock_already_held) {
+		release_spinlock(&AllShares.shareslock);
+	}
+	// ataked mn size
+	uint32 num_of_pages=ROUNDUP((size/PAGE_SIZE),PAGE_SIZE);
+//	while (num_of_pages){
+//		struct FrameInfo *ptr_frame_info ;
+//				allocate_frame(&ptr_frame_info);
+//
+//				map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+//				num_of_pages--;
+//	}
 }
 
 
