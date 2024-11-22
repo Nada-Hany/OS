@@ -129,8 +129,28 @@ struct Share* get_share(int32 ownerID, char* name)
 {
 	//TODO: [PROJECT'24.MS2 - #17] [4] SHARED MEMORY - get_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("get_share is not implemented yet");
+//	panic("get_share is not implemented yet");
 	//Your Code is Here...
+
+	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+	if (!lock_already_held)
+		acquire_spinlock(&AllShares.shareslock);
+
+	if(LIST_SIZE(&AllShares.shares_list) == 0)
+		return NULL;
+
+	if (!lock_already_held)
+		release_spinlock(&AllShares.shareslock);
+
+	char objName[64];
+	strcpy(objName, name);
+
+	struct Share* obj = NULL;
+	LIST_FOREACH(obj, &AllShares.shares_list){
+		if(obj->ownerID == ownerID && obj->name == objName)
+			return obj;
+	}
+	return NULL;
 
 }
 
