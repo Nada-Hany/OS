@@ -123,21 +123,20 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 	uint32 SizeandFlag = (totalSize);
 	if (isAllocated) SizeandFlag++;
 
-//	cprintf("stop 1\n");
 	char *startptr = (char *) va-sizeof(uint32);
 
 	uint32* header = (uint32*)startptr;
 	*header = SizeandFlag;
-//	cprintf("stop 2\n");
 	uint32* footer = (uint32*)(startptr+totalSize-sizeof(uint32));
 
 	*footer = SizeandFlag;
-//	cprintf("stop 3\n");
 	if (!isAllocated)
 	{
+//	cprintf("total size = %d\n", totalSize);
 		struct BlockElement* blockptr = (struct BlockElement *) (startptr+sizeof(uint32));
 		struct BlockElement blockelement = {0};
 		*blockptr = blockelement;
+//	cprintf("sstop 2\n");
 		struct BlockElement* it;
 		bool found = 0;
 		if(LIST_EMPTY(&freeBlocksList))
@@ -158,6 +157,7 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 		{
 			LIST_INSERT_TAIL(&freeBlocksList, blockptr);
 		}
+//	cprintf("sstop 3\n");
 	}
 }
 
@@ -175,6 +175,7 @@ void *alloc_block_FF(uint32 size) {
 		if (size < DYN_ALLOC_MIN_BLOCK_SIZE)
 			size = DYN_ALLOC_MIN_BLOCK_SIZE;
 		if (!is_initialized) {
+//			cprintf("not inited\n");
 			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/+ 2 * sizeof(int) /*da begin & end*/;
 			uint32 da_start = (uint32) sbrk(
 					ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
@@ -213,7 +214,7 @@ void *alloc_block_FF(uint32 size) {
 				set_block_data(element, required_size, 1);
 				set_block_data(new_free_block, elementSize - required_size, 0);
 			}
-//			cprintf("element found");
+//			cprintf("element found\n");
 			return (void*) ((char*) element );
 		}
 	}
@@ -221,9 +222,22 @@ void *alloc_block_FF(uint32 size) {
 //	cprintf("pages needed %d\n", numofPages);
 //	cprintf("old sbrk %\n",  (uint32)sbrk(0));
 	void * new_block = sbrk(numofPages);
+//	cprintf("sbrk finished\n");
 	if (new_block == (void*) -1) {
 		return NULL;
 	} else {
+		uint32 cur_segbreak = (uint32)sbrk(0);
+//		cprintf("stop1\n");
+		uint32 daEnd=cur_segbreak-sizeof(uint32);
+//		cprintf("stop2\n");
+		uint32 *endptr=(uint32 *)daEnd;
+//		cprintf("stop3\n");
+		*endptr=1;
+//		cprintf("stop4 block size = %d\n", cur_segbreak-(uint32)new_block);
+		set_block_data(new_block, cur_segbreak-(uint32)new_block, 1);
+//		cprintf("stop5\n");
+		free_block(new_block);
+//		cprintf("will allocate block with size: %d\n", size);
 		void * ret = alloc_block_FF(size);
 		return (char*) ret;
 	}
@@ -295,6 +309,11 @@ void *alloc_block_BF(uint32 size) {
 		if (new_block == (void*) -1) {
 			return NULL;
 		} else {
+			uint32 daEnd=(uint32)sbrk(0)-sizeof(uint32);
+			uint32 *endptr=(uint32 *)daEnd;
+			*endptr=1;
+			set_block_data(new_block, (uint32)new_block-(uint32)sbrk(0), 1);
+			free_block(new_block);
 			void * ret = alloc_block_BF(size);
 			return (char*) ret;
 		}
@@ -310,26 +329,26 @@ void free_block(void *va)
 	//panic("free_block is not implemented yet");
 	//Your Code is Here...
 	if(va==NULL){
+//		cprintf("null va\n");
 		return;
 	}
 	int8 is_myblock_free = is_free_block(va);
 	if(is_myblock_free){
 		return;
 	}
-	cprintf("stop 1\n");
 	//some data for my block
 	struct BlockElement * my_block_ptr = (struct BlockElement *) va;
 	uint32 my_block_size = get_block_size(va);
 	//free my block only
+//	cprintf("first stop block size = %d\n", my_block_size);
 	set_block_data(va,my_block_size, 0);
 	//data of next block
+//	cprintf("stop half\n");
 	void * next_block =(void *) ((char*)va + my_block_size);
-	cprintf("next block add: %x, segbreak add: %x\n", (uint32)next_block, (uint32)sbrk(0));
 	uint32 next_block_size = get_block_size(next_block);
-	cprintf("stop 2.1\n");
+//	cprintf("stop end\n");
 	//free next block if !allocated
 	int8 is_next_free = is_free_block(next_block);
-	cprintf("is next free? %d\n", is_next_free);
 	if(is_next_free == 1){
 		//cprintf("next is free\n");
 		struct BlockElement * next_block_ptr = (struct BlockElement *) next_block;
@@ -337,9 +356,7 @@ void free_block(void *va)
 		LIST_REMOVE(&freeBlocksList,my_block_ptr);
 		my_block_size=my_block_size+next_block_size;
 		set_block_data(va, my_block_size, 0);
-		cprintf("stop 3\n");
 	}
-
 
 	//data of previous block
 	uint32 prev_block_size = get_block_size((void*)((char*)va-4));
@@ -353,7 +370,6 @@ void free_block(void *va)
 		LIST_REMOVE(&freeBlocksList,my_block_ptr);
 		my_block_size=my_block_size+prev_block_size;
 		set_block_data(prev_block,my_block_size, 0);
-		cprintf("stop 4\n");
 	}
 }
 

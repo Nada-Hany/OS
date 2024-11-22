@@ -12,6 +12,7 @@
 #include <kern/disk/pagefile_manager.h>
 #include <kern/mem/memory_manager.h>
 
+
 //2014 Test Free(): Set it to bypass the PAGE FAULT on an instruction with this length and continue executing the next one
 // 0 means don't bypass the PAGE FAULT
 uint8 bypassInstrLength = 0;
@@ -163,7 +164,7 @@ void fault_handler(struct Trapframe *tf)
 				    //cprintf("in2\n");
 					env_exit();
 			}
-			if(!(perms & PERM_MARKED))
+			if(!(perms & PERM_MARKED) && (fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX))
 			{
 				env_exit();
 			}
@@ -262,6 +263,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
         }
 	    struct WorkingSetElement* working_set_element = env_page_ws_list_create_element(faulted_env, fault_va);
+	    pages_alloc_in_WS_list[(fault_va-(faulted_env->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=working_set_element;
 		LIST_INSERT_TAIL(&(faulted_env->page_WS_list), working_set_element);
 		if (LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
 		{

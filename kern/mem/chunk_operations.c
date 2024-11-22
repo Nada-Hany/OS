@@ -139,8 +139,9 @@ void* sys_sbrk(int numOfPages)
 	//TODO: [PROJECT'24.MS2 - #11] [3] USER HEAP - sys_sbrk
 	/*====================================*/
 	/*Remove this line before start coding*/
-	return (void*)-1 ;
+	//return (void*)-1 ;
 	/*====================================*/
+//	cprintf("in user sbrk\n");
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
 	uint32 previous_segBreak = env->env_segBreak;
 	if(numOfPages>0){
@@ -149,10 +150,28 @@ void* sys_sbrk(int numOfPages)
 			if(increase + env->env_segBreak > env->env_rLimit){
 				return (void*)-1;
 			}
+			//move sbrk
 			env->env_segBreak+=increase;
-	}
+			//mark pages
+			uint32 *page_table_ptr;
+			int num_of_pages = numOfPages;
+			uint32 virtual_address = previous_segBreak;
+			while(num_of_pages--)
+			{
+				if(get_page_table(env->env_page_directory, virtual_address, &page_table_ptr) == TABLE_NOT_EXIST)
+				{
+					//cprintf("creating new pt\n");
+					page_table_ptr = create_page_table(env->env_page_directory, virtual_address);
+				}
+				pt_set_page_permissions(env->env_page_directory, virtual_address, PERM_MARKED, 0);
+				//int perms = pt_get_page_permissions(e->env_page_directory, virtual_address);
+				//cprintf("perms : %d\n", perms);
+				virtual_address += PAGE_SIZE;
+			}
 
-	return (void *)env->env_segBreak;
+	}
+//	cprintf("sbrk_user will return here\n");
+	return (void *)previous_segBreak;
 }
 
 //=====================================
@@ -200,7 +219,41 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #15] [3] USER HEAP [KERNEL SIDE] - free_user_mem
 	// Write your code here, remove the panic and write your code
-	panic("free_user_mem() is not implemented yet...!!");
+	//panic("free_user_mem() is not implemented yet...!!");
+	uint32 iterator_va = virtual_address;
+	int num_of_pages=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	while(num_of_pages--){
+		uint32* ptr_page_table = NULL;
+
+		struct FrameInfo *ptr_frame = get_frame_info(e->env_page_directory, iterator_va,
+				&ptr_page_table);
+
+		if(ptr_frame!=0){
+			free_frame(ptr_frame);
+
+			struct WorkingSetElement *wse = pages_alloc_in_WS_list[(iterator_va-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE];
+
+			unmap_frame(e->env_page_directory, wse->virtual_address);
+
+			if (e->page_last_WS_element == wse)
+			{
+				e->page_last_WS_element = LIST_NEXT(wse);
+			}
+			LIST_REMOVE(&(e->page_WS_list), wse);
+
+			kfree(wse);
+
+			pages_alloc_in_WS_list[(iterator_va-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
+		}
+
+		pt_set_page_permissions(e->env_page_directory, iterator_va,0,PERM_MARKED);
+		pt_set_page_permissions(e->env_page_directory, iterator_va,0,PERM_PRESENT);
+
+
+		pf_remove_env_page(e,iterator_va);
+		iterator_va+=PAGE_SIZE;
+
+	}
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem

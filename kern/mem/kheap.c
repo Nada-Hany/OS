@@ -41,6 +41,8 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		}
 		va = va + PAGE_SIZE;
 	}
+	for(int i=0;i<NUM_OF_UHEAP_PAGES;i++)
+		pages_alloc_in_WS_list[i]=NULL;
 	initialize_dynamic_allocator(daStart,initSizeToAllocate);
 	return 0;
 	//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
@@ -57,7 +59,7 @@ void* sbrk(int numOfPages)
 	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
 	 */
-//	cprintf("sbrk called\n");
+//	cprintf("kheap_sbrk called\n");
 	uint32 previous_segBreak = segBreak;
 	if(numOfPages>0){
 		int free_frame_list_size = LIST_SIZE(&MemFrameLists.free_frame_list);
@@ -80,15 +82,15 @@ void* sbrk(int numOfPages)
 				}
 				va = va + PAGE_SIZE;
 		}
-		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
-		uint32 *endptr=(uint32 *)daEnd;
-		cprintf("putting end block\n");
-		*endptr=1;
-		cprintf("putting end block 2\n");
-		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
-		cprintf("setted block data\n");
-		free_block((void*)previous_segBreak);
-		cprintf("freed block block\n");
+//		uint32 daEnd=(uint32)segBreak-sizeof(uint32);
+//		uint32 *endptr=(uint32 *)daEnd;
+//		cprintf("putting end block\n");
+//		*endptr=1;
+//		cprintf("putting end block 2\n");
+//		set_block_data((void*)previous_segBreak, segBreak-previous_segBreak, 1);
+//		cprintf("setted block data\n");
+//		free_block((void*)previous_segBreak);
+//		cprintf("freed block block\n");
 	}
 
 	return (void*)previous_segBreak;
@@ -161,6 +163,7 @@ void* kmalloc(unsigned int size)
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 	if(isKHeapPlacementStrategyFIRSTFIT()){
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+//			cprintf("from kmalloc\n");
 			return alloc_block_FF(size);
 		}else{
 			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
