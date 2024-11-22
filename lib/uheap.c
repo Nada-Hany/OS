@@ -16,7 +16,7 @@ void* sbrk(int increment)
 //=================================
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
-uint32 virtual_addresses_pages_num [1<<20];
+uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
 bool page_marked[NUM_OF_UHEAP_PAGES] = {0};
 
 int get_page_index(uint32 va)
@@ -112,7 +112,7 @@ void* malloc(uint32 size)
 			mark_pages(final_va, size);
 			sys_allocate_user_mem(final_va, size);
 			//cprintf("after sys_alloc\n");
-			virtual_addresses_pages_num[final_va>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			virtual_addresses_pages_num[get_page_index(final_va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			return (void *) final_va;
 		}
 	}
@@ -170,10 +170,10 @@ void free(void* virtual_address)
 	if(va>=USER_HEAP_START  && va<myEnv->env_segBreak){
 		free_block(virtual_address);
 	}else if(va>=myEnv->env_rLimit+PAGE_SIZE && va<USER_HEAP_MAX){
-		int num_of_pages = virtual_addresses_pages_num[va>>12];
+		int num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
 		unmark_pages(va,num_of_pages*PAGE_SIZE);
-		sys_free_user_mem(va,virtual_addresses_pages_num[va>>12]*PAGE_SIZE);
-		virtual_addresses_pages_num[va>>12]=0;
+		sys_free_user_mem(va,virtual_addresses_pages_num[get_page_index(va)]*PAGE_SIZE);
+		virtual_addresses_pages_num[get_page_index(va)]=0;
 	}else{
 		panic("invalid address\n");
 	}

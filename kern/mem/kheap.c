@@ -105,6 +105,11 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
+uint32 get_page_index(uint32 va)
+{
+	return (va - (rLimit + PAGE_SIZE)) / PAGE_SIZE;
+}
+
 int num_of_unmapped_pages(uint32 start_va){
 	int num = 0;
 	while(start_va<KERNEL_HEAP_MAX && kheap_physical_address(start_va) == 0){
@@ -188,7 +193,7 @@ void* kmalloc(unsigned int size)
 				return NULL;
 
 			allocate_pages(actual_start,size);
-			virtual_addresses_pages_num[actual_start>>12]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			virtual_addresses_pages_num[get_page_index(actual_start)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
 
 			return (void *)actual_start;
@@ -249,7 +254,7 @@ void kfree(void* virtual_address) {
 	} else if (va > rLimit + 4) {
 
 
-		uint32 num_of_pages = virtual_addresses_pages_num[va >> 12];
+		uint32 num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
 
 		uint32 actual_start_free = va;
 
@@ -267,8 +272,8 @@ void kfree(void* virtual_address) {
 			num_of_pages--;
 
 		}
-		add_to_free_pages(actual_start_free,virtual_addresses_pages_num[actual_start_free >> 12]);
-		virtual_addresses_pages_num[actual_start_free >> 12] = 0;
+		add_to_free_pages(actual_start_free,virtual_addresses_pages_num[get_page_index(actual_start_free)]);
+		virtual_addresses_pages_num[get_page_index(actual_start_free)] = 0;
 
 
 
