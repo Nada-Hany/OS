@@ -45,7 +45,7 @@ int numOfKheapVACalls ;
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segBreak, rLimit;
 uint32 virtual_addresses[1<<20];
-uint32 virtual_addresses_pages_num [1<<20];
+uint32 virtual_addresses_pages_num [(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE];
 
 struct FreePage{
 	uint32 start_va;
