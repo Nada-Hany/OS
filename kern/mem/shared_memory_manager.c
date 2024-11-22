@@ -110,11 +110,12 @@ struct Share* get_share(int32 ownerID, char* name)
 	if (!lock_already_held)
 		release_spinlock(&AllShares.shareslock);
 
-	struct Share* obj;
+	char objName[64];
+	strcpy(objName, name);
+
+	struct Share* obj = NULL;
 	LIST_FOREACH(obj, &AllShares.shares_list){
-		char objName[64];
-		strcpy(objName, obj.name);
-		if(obj.ownerID == ownerID && name == objName)
+		if(obj->ownerID == ownerID && obj->name == objName)
 			return obj;
 	}
 	return NULL;
