@@ -102,36 +102,17 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 
 	int numberOfFrames = ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
 	sharedObj->framesStorage = (create_frames_storage(numberOfFrames));
+
 	if(sharedObj->framesStorage == NULL || (void*)sharedObj->framesStorage == (void*) -1){
 		kfree(sharedObj);
 		return NULL;
 	}
-//	for(int i=0; i<numberOfFrames; i++){
-//
-//		uint32 va = (uint32)sharedObj;
-//		uint32 *ptr_page_table;
-//
-//		if(get_page_table(ptr_page_directory,va,&ptr_page_table) == TABLE_NOT_EXIST)
-//			return NULL;
-//
-//		sharedObj->framesStorage[i] = get_frame_info(ptr_page_directory, va, &ptr_page_table);
-//
-//		va += PAGE_SIZE;
-//	}
 
 	strcpy(sharedObj->name, shareName);
 	sharedObj->size = size;
 	sharedObj->ownerID = ownerID;
 	sharedObj->references = 1;
 	sharedObj->isWritable = isWritable;
-	bool lock_is_held = holding_spinlock(&AllShares.shareslock);
-
-	// should i add to the list myself or it's added internally
-//	if (!lock_is_held)
-//		acquire_spinlock(&AllShares.shareslock);
-//	LIST_INSERT_TAIL(AllShares.shares_list, sharedObj);
-//	if (!lock_is_held)
-//		release_spinlock(&AllShares.shareslock);
 
 	return sharedObj;
 
