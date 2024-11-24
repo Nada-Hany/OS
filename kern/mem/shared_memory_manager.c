@@ -66,8 +66,17 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 {
 	//TODO: [PROJECT'24.MS2 - #16] [4] SHARED MEMORY - create_frames_storage()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_frames_storage is not implemented yet");
+//	panic("create_frames_storage is not implemented yet");
 	//Your Code is Here...
+
+	cprintf("in create frames storage \n");
+
+	struct FrameInfo** frames = (struct FrameInfo**)kmalloc(numOfFrames * sizeof(struct FrameInfo *));
+
+	if(frames == NULL || (void*) frames == (void*) -1)
+		return NULL;
+
+	return frames;
 
 }
 
@@ -81,8 +90,31 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 {
 	//TODO: [PROJECT'24.MS2 - #16] [4] SHARED MEMORY - create_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_share is not implemented yet");
+//	panic("create_share is not implemented yet");
 	//Your Code is Here...
+
+	struct Share* sharedObj = (struct Share*)kmalloc(size);
+
+	if(sharedObj == NULL || (void*)sharedObj == (void*) -1)
+		return NULL;
+	int32 id = (int32)sharedObj & 0x7FFFFFFF;
+	sharedObj->ID = id;
+
+	int numberOfFrames = ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
+	sharedObj->framesStorage = (create_frames_storage(numberOfFrames));
+
+	if(sharedObj->framesStorage == NULL || (void*)sharedObj->framesStorage == (void*) -1){
+		kfree(sharedObj);
+		return NULL;
+	}
+
+	strcpy(sharedObj->name, shareName);
+	sharedObj->size = size;
+	sharedObj->ownerID = ownerID;
+	sharedObj->references = 1;
+	sharedObj->isWritable = isWritable;
+
+	return sharedObj;
 
 }
 
@@ -97,8 +129,28 @@ struct Share* get_share(int32 ownerID, char* name)
 {
 	//TODO: [PROJECT'24.MS2 - #17] [4] SHARED MEMORY - get_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("get_share is not implemented yet");
+//	panic("get_share is not implemented yet");
 	//Your Code is Here...
+
+	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+	if (!lock_already_held)
+		acquire_spinlock(&AllShares.shareslock);
+
+	if(LIST_SIZE(&AllShares.shares_list) == 0)
+		return NULL;
+
+	if (!lock_already_held)
+		release_spinlock(&AllShares.shareslock);
+
+	char objName[64];
+	strcpy(objName, name);
+
+	struct Share* obj = NULL;
+	LIST_FOREACH(obj, &AllShares.shares_list){
+		if(obj->ownerID == ownerID && obj->name == objName)
+			return obj;
+	}
+	return NULL;
 
 }
 
