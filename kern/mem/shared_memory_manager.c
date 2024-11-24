@@ -69,18 +69,15 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 //	panic("create_frames_storage is not implemented yet");
 	//Your Code is Here...
 
-	cprintf("in create frames storage \n");
-
 	struct FrameInfo** frames = (struct FrameInfo**)kmalloc(numOfFrames * sizeof(struct FrameInfo *));
-//	memset(frames, 0, numOfFrames * sizeof(struct FrameInfo));
+
 	if(frames == NULL || (void*) frames == (void*) -1){
 		cprintf("return null in create frame storage\n");
 		return NULL;
 	}
-for(int i=0;i<numOfFrames;i++){
-	frames[i]=NULL;
-}
-	cprintf("end of create frame storage func \n");
+	for(int i=0;i<numOfFrames;i++){
+		frames[i]=NULL;
+	}
 
 	return frames;
 
@@ -136,39 +133,40 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	sharedObj->isWritable = isWritable;
 	cprintf("end of helper create share func \n");
 	return sharedObj;*/
+
 	// Dynamically allocate memory for the Share structure
-	    struct Share* obj = (struct Share*)kmalloc(sizeof(struct Share));
-	    if (obj == NULL || (void*)obj == (void*)-1)
-	    {
-	        panic("Failed to allocate memory for Share object");
-	        return NULL;
-	    }
+	struct Share* obj = (struct Share*)kmalloc(sizeof(struct Share));
+	if (obj == NULL || (void*)obj == (void*)-1)
+	{
+		panic("Failed to allocate memory for Share object");
+		return NULL;
+	}
 
-	    obj->ownerID = ownerID;
+	obj->ownerID = ownerID;
 
-	    // Copy shareName safely into the name field
-	    strncpy(obj->name, shareName, sizeof(obj->name) - 1);
-	    obj->name[sizeof(obj->name) - 1] = '\0'; // Ensure null-termination
+	// Copy shareName safely into the name field
+	strncpy(obj->name, shareName, sizeof(obj->name) - 1);
+	obj->name[sizeof(obj->name) - 1] = '\0'; // Ensure null-termination
 
-	    obj->size = size;
-	    obj->references = 1;
-	    obj->isWritable = isWritable;
-	    // Calculate the number of frames required
-	    int numberOfFrames = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	obj->size = size;
+	obj->references = 1;
+	obj->isWritable = isWritable;
+	// Calculate the number of frames required
+	int numberOfFrames = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
 
-	    // Create framesStorage and handle errors
-	    obj->framesStorage = create_frames_storage(numberOfFrames);
-	    if (obj->framesStorage == NULL)
-	    {
-	        panic("Failed to allocate memory for framesStorage");
-	        kfree(obj);
-	        return NULL;
-	    }
+	// Create framesStorage and handle errors
+	obj->framesStorage = create_frames_storage(numberOfFrames);
+	if (obj->framesStorage == NULL)
+	{
+		panic("Failed to allocate memory for framesStorage");
+		kfree(obj);
+		return NULL;
+	}
 
-	    cprintf("Share object created successfully: ID=%d, Name=%s, Size=%d, Writable=%d\n",
-	            obj->ID, obj->name, obj->size, obj->isWritable);
+	cprintf("Share object created successfully: ID=%d, Name=%s, Size=%d, Writable=%d\n",
+			obj->ID, obj->name, obj->size, obj->isWritable);
 
-	    return obj;
+	return obj;
 
 }
 
@@ -227,18 +225,16 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 	struct Env* myenv = get_cpu_proc(); //The calling environment
-//	cprintf("in create share obj in user side\n");
 	//search if obj is already exist
 	if (get_share(ownerID, shareName) != NULL) {
-		cprintf("shared already exists\n");
+//		cprintf("shared already exists\n");
 		return E_SHARED_MEM_EXISTS;
 	}
-//	cprintf("after get share call\n");
 	uint32 num_of_pages = ROUNDUP(size,PAGE_SIZE) / PAGE_SIZE;
 
 	// TODO check if no mem
 	if(num_of_pages > LIST_SIZE(&MemFrameLists.free_frame_list)){
-		cprintf("no mem for shared obj \n");
+//		cprintf("no mem for shared obj \n");
 		return E_NO_SHARE;
 	}
 
@@ -248,10 +244,8 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 
 	//add shared obj to shared list (lock -> insert ->release)
 	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
-//	cprintf("holding lock val = %d \n", lock_already_held);
 
 	if (!lock_already_held) {
-//		cprintf("before acquiring lock\n");
 		acquire_spinlock(&AllShares.shareslock);
 	}
 
@@ -260,7 +254,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	if (!lock_already_held) {
 		release_spinlock(&AllShares.shareslock);
 	}
-	cprintf("----------->va in create shared object = %x \n", virtual_address);
+//	cprintf("----------->va in create shared object = %x \n", virtual_address);
 	uint32 start_va = (uint32) virtual_address;
 	int index_of_framesStorage = 0;
 	while (num_of_pages) {
@@ -278,8 +272,8 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 		index_of_framesStorage++;
 	}
 	shared_obj->ID=(uint32)virtual_address& 0x7FFFFFFF;
-	cprintf("availible frames after creating the shared obj = %d \n", LIST_SIZE( &MemFrameLists.free_frame_list));
-	cprintf("end of create shared obj\n");
+//	cprintf("availible frames after creating the shared obj = %d \n", LIST_SIZE( &MemFrameLists.free_frame_list));
+//	cprintf("end of create shared obj\n");
 	return shared_obj->ID;
 }
 
@@ -294,7 +288,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	//panic("getSharedObject is not implemented yet");
 	//Your Code is Here...
 
-	cprintf("------>in get shared obj kernel side \n");
+//	cprintf("------>in get shared obj kernel side \n");
 
 	struct Env* myenv = get_cpu_proc(); //The calling environment
 	struct Share* my_shared_object = get_share(ownerID, shareName);
