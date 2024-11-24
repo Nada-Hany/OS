@@ -131,13 +131,17 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 	 * */
 
 	//number of required pages
+
+	cprintf("in ff func \n");
 	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
+//	uint32 num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 	uint32 final_va = 0;
 	while (start_va < USER_HEAP_MAX) {
 		uint32 page_index = get_page_index(start_va);
-
+//		cprintf("before checking marked pages\n");
 		// If the current page is allocated, skip it
 		if (page_marked[page_index]) {
+//			cprintf("page marked");
 			start_va += PAGE_SIZE;
 			continue;
 		}
@@ -148,9 +152,10 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 			//cprintf("%d\n", consecutive_free_pages);
 			//cprintf("%d\n", ((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0)));
 			final_va = start_va;
+//			cprintf("final va in ff func -> %x \n", final_va);
 			break;
 		}
-
+//		cprintf("in loop start va = %x \n ", start_va);
 		// go to next block of free pages
 		start_va += (consecutive_free_pages * PAGE_SIZE);
 	}
@@ -192,8 +197,35 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #18] [4] SHARED MEMORY [USER SIDE] - smalloc()
 	// Write your code here, remove the panic and write your code
-	panic("smalloc() is not implemented yet...!!");
-	return NULL;
+//	panic("smalloc() is not implemented yet...!!");
+
+	cprintf("in smalloc\n");
+	cprintf("frames in smalloc = %d\n", sys_calculate_free_frames());
+//	cprintf(sharedVarName);
+//	cprintf("\n");
+	uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
+//	cprintf("va in smalloc -> %x \n", va);
+	if(va == 0)
+		return NULL;
+
+	int check = sys_createSharedObject(sharedVarName, size, isWritable, (void *)va);
+	cprintf("frames in smalloc after create share object= %d\n", sys_calculate_free_frames());
+//	cprintf("after sys create obj, check = %d \n", check);
+	if(check == E_SHARED_MEM_EXISTS || check == E_NO_SHARE)
+		return NULL;
+
+	int numberOfFrames = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	// marking allocated pages as marked to be skipped
+	uint32 tmp = va;
+	while(numberOfFrames){
+		int ind = get_page_index(tmp);
+		page_marked[ind] = 1;
+		tmp += PAGE_SIZE;
+		numberOfFrames--;
+	}
+	cprintf("frames in smalloc after allocating its frame = %d\n", sys_calculate_free_frames());
+	cprintf("end of smalloc\n");
+	return (void *) va;
 }
 
 //========================================
@@ -203,21 +235,51 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
 	//panic("sget() is not implemented yet...!!");
-	int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
+	/*int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
 	// check if shared obj exit
 	if (size == E_SHARED_MEM_NOT_EXISTS) {
 		return NULL;
 	}
-
+	cprintf("in sget \n");
 	uint32 va=FirstFit(myEnv->env_rLimit + PAGE_SIZE,size);
 
 	if (va == 0)
 		return NULL;
-	 uint32 ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void*)va);
-	    if (ret == E_SHARED_MEM_NOT_EXISTS) {
-	        return NULL; // Failed to map the shared object
+	uint32 ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void*)va);
+	if (ret == E_SHARED_MEM_NOT_EXISTS) {
+		return NULL; // Failed to map the shared object
+	}*/
+	cprintf("sget: Starting retrieval for shared variable %s from owner %d\n", sharedVarName, ownerEnvID);
+
+	    int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
+	    if (size == E_SHARED_MEM_NOT_EXISTS) {
+	        cprintf("sget: Shared variable %s does not exist in environment %d\n", sharedVarName, ownerEnvID);
+	        return NULL;
 	    }
-	    return (void*)va;
+
+	    uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
+	    if (va == 0) {
+	        cprintf("sget: No suitable virtual address found for size %d\n", size);
+	        return NULL;
+	    }
+
+	    int ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void*)va);
+	    if (ret == E_SHARED_MEM_NOT_EXISTS) {
+	        cprintf("sget: Failed to map shared variable %s\n", sharedVarName);
+	        return NULL;
+	    }
+	int numberOfPages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+
+	uint32 tmp = va;
+	while(numberOfPages){
+		int ind = get_page_index(tmp);
+		page_marked[ind] = 1;
+		tmp += PAGE_SIZE;
+		numberOfPages--;
+	}
+//	cprintf("end of sget \n");
+    cprintf("sget: Successfully retrieved and mapped shared variable %s\n", sharedVarName);
+	return (void*)va;
 }
 
 
