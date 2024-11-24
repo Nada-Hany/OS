@@ -189,7 +189,10 @@ void sfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
-	panic("sfree() is not implemented yet...!!");
+//	panic("sfree() is not implemented yet...!!");
+	//do i need to remove offset from the virtual address ????
+	int32 Id = (uint32)virtual_address 0x7FFFFFFF;
+	sys_freeSharedObject(Id, virtual_address);
 }
 
 

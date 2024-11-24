@@ -215,7 +215,13 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - freeSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("freeSharedObject is not implemented yet");
+	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
+	struct Share* share_ptr;
+	struct Env* myenv = get_cpu_proc(); //The calling environment
+	LIST_FOREACH(share_ptr, &AllShares.shares_list){
+		if(share_ptr->ID == sharedObjectID){
 
+		}
+	}
 }
