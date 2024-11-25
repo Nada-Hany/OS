@@ -269,7 +269,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 
 		// allocate new frame ,map this frame to va in env_page_dir , add this frame to frames storage
 		allocate_frame(&ptr_frame_info);
-		map_frame(myenv->env_page_directory, ptr_frame_info, start_va,PERM_WRITEABLE | PERM_USER);
+		map_frame(myenv->env_page_directory, ptr_frame_info, start_va, PERM_WRITEABLE| PERM_USER);
 		//cprintf("--->frame %x  ,  va %x\n",ptr_frame_info, start_va);
 		shared_obj->framesStorage[index_of_framesStorage] = ptr_frame_info;
 
@@ -343,18 +343,16 @@ void free_share(struct Share* ptrShare)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("free_share is not implemented yet");
 	//Your Code is Here...
-	cprintf("freeShare\n");
-	LIST_REMOVE(&AllShares.shares_list, ptrShare);
-	struct FrameInfo** frames_shared = ptrShare->framesStorage;
+//	cprintf("first frame:%x: \n", (uint32)ptrShare->framesStorage[0]);
 	int num_of_frames = ROUNDUP(ptrShare->size, PAGE_SIZE) / PAGE_SIZE;
 	for(int i=0;i<num_of_frames;i++){
-		struct FrameInfo* frame = frames_shared[i];
-		free_frame(frame);
+		free_frame(ptrShare->framesStorage[i]);
 	}
-	cprintf("stop5\n");
+	LIST_REMOVE(&AllShares.shares_list, ptrShare);
+//	cprintf("stop5\n");
 	kfree((void*)ptrShare->framesStorage);
 	kfree((void*)ptrShare);
-	cprintf("end freeShare\n");
+//	cprintf("end freeShare\n");
 }
 //========================
 // [B2] Free Share Object:
@@ -365,47 +363,58 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
-	cprintf("freeSharedObject\n");
+	//lock TODO ????
 	struct Share* share_ptr;
+	struct Share* found_share_ptr;
 	struct Env* myenv = get_cpu_proc(); //The calling environment
+//	uint32 *ppp;
+//	cprintf("start frame:%x\n", (uint32)get_frame_info(myenv->env_page_directory, (uint32)startVA, &ppp));
 	//searching for share object with its id
 	int number_of_page_tables = 0;
 	uint32 page_tables[1<<10];
-	cprintf("stop1\n");
+	uint32 virt_addrs[1<<10];
+//	cprintf("stop1\n");
 	LIST_FOREACH(share_ptr, &AllShares.shares_list){
 		//if found unmap it from current process and remove page tables if they are empty
 		if(share_ptr->ID == sharedObjectID){
-			cprintf("stop2\n");
-			struct Share* my_share_obj = share_ptr;
-			int size = my_share_obj->size;
-			int num_of_pages = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
-			uint32 va = (uint32) startVA;
-			for(int i=0;i<num_of_pages;i++){
-				//making a set of page tables to check if they are emtpy later
-				uint32 *page_table;
-				get_page_table(myenv->env_page_directory, va, &page_table);
-				bool f=0;
-				for(int j=0;j<number_of_page_tables;i++){
-					if(page_tables[j] == (uint32)page_table){
-						f=1;
-						break;
-					}
-				}
-				if(!f){
-					page_tables[number_of_page_tables] = (uint32) page_table;
-					number_of_page_tables++;
-				}
-				///////////////////////////////////////////////////////////////
-				unmap_frame(myenv->env_page_directory, va);
-				va+=PAGE_SIZE;
-			}
+//			cprintf("obj name:%s\n", share_ptr->name);
+			found_share_ptr = share_ptr;
 			break;
 		}
 	}
-	cprintf("stop3\n");
+	found_share_ptr->references--;
+	//if this was the last reference then delete share obj
+	if(found_share_ptr->references==0){
+		free_share(found_share_ptr);
+	}
+	int size = found_share_ptr->size;
+	int num_of_pages = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	uint32 va = (uint32) startVA;
+	for(int i=0;i<num_of_pages;i++){
+		//making a set of page tables to check if they are emtpy later
+		uint32 *page_table;
+		get_page_table(myenv->env_page_directory, va, &page_table);
+//		cprintf("page_table:%x\n",(uint32)page_table);
+		bool f=0;
+		for(int j=0;j<number_of_page_tables;j++){
+			if(page_tables[j] == (uint32)page_table){
+				f=1;
+				break;
+			}
+		}
+		if(!f){
+			page_tables[number_of_page_tables] = (uint32) page_table;
+			virt_addrs[number_of_page_tables] = va;
+			number_of_page_tables++;
+		}
+		///////////////////////////////////////////////////////////////
+		unmap_frame(myenv->env_page_directory, va);
+		va+=PAGE_SIZE;
+	}
 	//check on page tables
 	for(int i=0;i<number_of_page_tables;i++){
 		uint32 *page_table_ptr = (uint32*)page_tables[i];
+//		cprintf("page_table of %d:%x\n",i, page_tables[i]);
 		bool empty=1;
 		for(int j=0;j<(1<<10);j++){
 			if(page_table_ptr[j]!=0){
@@ -415,20 +424,18 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 		}
 		//if a page table is empty remove it
 		if(empty){
+//			cprintf("the %d page table was empty\n", i);
 			uint32 * page_dir = myenv->env_page_directory;
 			uint32 * page_ptr_tmp;
+			kfree((void*)page_tables[i]);
 			struct FrameInfo *frame=get_frame_info(page_dir, page_tables[i], &page_ptr_tmp);
-			free_frame(frame);
-			page_dir[PDX((uint32 *)page_tables[i])] = 0;
-
+//			free_frame(to_frame_info(EXTRACT_ADDRESS(kheap_physical_address((uint32)page_ptr_tmp))));
+//			page_dir[PDX((uint32 *)page_tables[i])] = 0;
+			//here is the problem they are not the same why ????????????????????????????
+//			cprintf("WTF %x, %x\n", (uint32)page_ptr_tmp, page_tables[i]);
+			pd_clear_page_dir_entry(page_dir, virt_addrs[i]);
 		}
 	}
-	cprintf("stop4\n");
-	share_ptr->references--;
-	//if this was the last refrence then delete share obj
-	if(share_ptr->references==0){
-		free_share(share_ptr);
-	}
-	cprintf("end freeSharedObject\n");
+	tlbflush();
 	return 0;
 }

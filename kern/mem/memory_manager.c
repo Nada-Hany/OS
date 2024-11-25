@@ -422,6 +422,7 @@ struct FrameInfo * get_frame_info(uint32 *ptr_page_directory, uint32 virtual_add
 	if((*ptr_page_table) != 0)
 	{
 		uint32 index_page_table = PTX(virtual_address);
+//		cprintf("index_page_table:%d\n", index_page_table);
 		//cprintf(".gfi .2\n");
 		uint32 page_table_entry = (*ptr_page_table)[index_page_table];
 
