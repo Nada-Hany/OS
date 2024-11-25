@@ -9,7 +9,6 @@
 /*2023*/
 void* sbrk(int increment)
 {
-//	cprintf("sbrk_user\n");
 	return (void*) sys_sbrk(increment);
 }
 
@@ -26,7 +25,6 @@ int get_page_index(uint32 va)
 
 void mark_pages(uint32 start_va, uint32 size)
 {
-	//cprintf("in mark_pages\n");
 	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 	while(num_of_pages--)
 	{
@@ -37,7 +35,6 @@ void mark_pages(uint32 start_va, uint32 size)
 }
 void unmark_pages(uint32 start_va, uint32 size)
 {
-	//cprintf("in mark_pages\n");
 	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 	while(num_of_pages--)
 	{
@@ -49,10 +46,8 @@ void unmark_pages(uint32 start_va, uint32 size)
 
 int num_of_unmapped_pages(uint32 start_va)
 {
-	//cprintf("in num_of_unmapped_pages\n");
 	int num = 0;
 	uint32 page_index = get_page_index(start_va);
-	//cprintf("%d\n", page_index);
 	while(start_va < USER_HEAP_MAX && !(page_marked[page_index]))
 	{
 		num = num + 1;
@@ -75,10 +70,8 @@ void* malloc(uint32 size)
 	//to check the current strategy
 	if(sys_isUHeapPlacementStrategyFIRSTFIT())
 	{
-		//cprintf("in malloc\n");
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-//			cprintf("block allocator\n");
 			return alloc_block_FF(size);
 	    }
 		else
@@ -97,9 +90,6 @@ void* malloc(uint32 size)
 				int consecutive_free_pages = num_of_unmapped_pages(start_va);
 				if(consecutive_free_pages*PAGE_SIZE >= size)
 				{
-					//cprintf("found\n");
-					//cprintf("%d\n", consecutive_free_pages);
-					//cprintf("%d\n", ((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0)));
 					final_va = start_va;
 					break;
 				}
@@ -111,7 +101,6 @@ void* malloc(uint32 size)
 
 			mark_pages(final_va, size);
 			sys_allocate_user_mem(final_va, size);
-			//cprintf("after sys_alloc\n");
 			virtual_addresses_pages_num[get_page_index(final_va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			return (void *) final_va;
 		}
@@ -131,31 +120,25 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 	 * */
 
 	//number of required pages
-
-	cprintf("in ff func \n");
 	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
-//	uint32 num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+
 	uint32 final_va = 0;
 	while (start_va < USER_HEAP_MAX) {
 		uint32 page_index = get_page_index(start_va);
-//		cprintf("before checking marked pages\n");
+
 		// If the current page is allocated, skip it
 		if (page_marked[page_index]) {
-//			cprintf("page marked");
+
 			start_va += PAGE_SIZE;
 			continue;
 		}
 
 		int consecutive_free_pages = num_of_unmapped_pages(start_va);
 		if (consecutive_free_pages >= num_of_pages) {
-			//cprintf("found\n");
-			//cprintf("%d\n", consecutive_free_pages);
-			//cprintf("%d\n", ((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0)));
 			final_va = start_va;
-//			cprintf("final va in ff func -> %x \n", final_va);
+
 			break;
 		}
-//		cprintf("in loop start va = %x \n ", start_va);
 		// go to next block of free pages
 		start_va += (consecutive_free_pages * PAGE_SIZE);
 	}
@@ -199,18 +182,13 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// Write your code here, remove the panic and write your code
 //	panic("smalloc() is not implemented yet...!!");
 
-	cprintf("in smalloc\n");
-	cprintf("frames in smalloc = %d\n", sys_calculate_free_frames());
-//	cprintf(sharedVarName);
-//	cprintf("\n");
 	uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
-//	cprintf("va in smalloc -> %x \n", va);
+
 	if(va == 0)
 		return NULL;
 
 	int check = sys_createSharedObject(sharedVarName, size, isWritable, (void *)va);
-	cprintf("frames in smalloc after create share object= %d\n", sys_calculate_free_frames());
-//	cprintf("after sys create obj, check = %d \n", check);
+
 	if(check == E_SHARED_MEM_EXISTS || check == E_NO_SHARE)
 		return NULL;
 
@@ -223,8 +201,6 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		tmp += PAGE_SIZE;
 		numberOfFrames--;
 	}
-	cprintf("frames in smalloc after allocating its frame = %d\n", sys_calculate_free_frames());
-	cprintf("end of smalloc\n");
 	return (void *) va;
 }
 
@@ -235,37 +211,23 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
 	//panic("sget() is not implemented yet...!!");
-	/*int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
-	// check if shared obj exit
-	if (size == E_SHARED_MEM_NOT_EXISTS) {
-		return NULL;
-	}
-	cprintf("in sget \n");
-	uint32 va=FirstFit(myEnv->env_rLimit + PAGE_SIZE,size);
 
-	if (va == 0)
-		return NULL;
-	uint32 ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void*)va);
-	if (ret == E_SHARED_MEM_NOT_EXISTS) {
-		return NULL; // Failed to map the shared object
-	}*/
-	cprintf("sget: Starting retrieval for shared variable %s from owner %d\n", sharedVarName, ownerEnvID);
 
 	    int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
 	    if (size == E_SHARED_MEM_NOT_EXISTS) {
-	        cprintf("sget: Shared variable %s does not exist in environment %d\n", sharedVarName, ownerEnvID);
+
 	        return NULL;
 	    }
 
 	    uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
 	    if (va == 0) {
-	        cprintf("sget: No suitable virtual address found for size %d\n", size);
+
 	        return NULL;
 	    }
 
 	    int ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void*)va);
 	    if (ret == E_SHARED_MEM_NOT_EXISTS) {
-	        cprintf("sget: Failed to map shared variable %s\n", sharedVarName);
+
 	        return NULL;
 	    }
 	int numberOfPages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
@@ -277,8 +239,6 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 		tmp += PAGE_SIZE;
 		numberOfPages--;
 	}
-//	cprintf("end of sget \n");
-    cprintf("sget: Successfully retrieved and mapped shared variable %s\n", sharedVarName);
 	return (void*)va;
 }
 
@@ -303,7 +263,6 @@ void sfree(void* virtual_address)
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
 //	panic("sfree() is not implemented yet...!!");
-	//do i need to remove offset from the virtual address ????
 	uint32 Id = (uint32)virtual_address & 0x7FFFFFFF;
 	sys_freeSharedObject(Id, virtual_address);
 }
