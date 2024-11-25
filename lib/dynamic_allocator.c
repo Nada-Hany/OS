@@ -391,9 +391,10 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		// check if the next block can be merged or split
 		if(is_next_free)
 		{
+
 			uint32 diff = new_size - old_size;
 			// Split the next block
-			if (next_block_size - diff >= 16)
+			if ((int32)(next_block_size - diff) >= 16)
 			{
 				LIST_REMOVE(&freeBlocksList, next_block_ptr);
 				set_block_data(((char *)next_block_ptr+diff), next_block_size - diff, 0);
@@ -402,7 +403,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			}
 
 			// merge without splitting
-			else if (next_block_size - diff >= 0)
+			else if ((int32)(next_block_size - diff) >= 0)
 			{
 				LIST_REMOVE(&freeBlocksList, next_block_ptr);
 				set_block_data(va, next_block_size+old_size, 1);
@@ -410,30 +411,20 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			}
 		}
 		// if next ! free || can't be merged
-        //save the old data
-        uint32 data_size = old_size - 8;
-        char* old_ptr = (char*)va;
-        char temp[data_size];
-
-        for (uint32 i = 0; i < data_size; i++)
-        {
-            temp[i] = old_ptr[i];
-        }
-
-        // free the block and allocate in new place
-		free_block(va);
 		void* new_address = alloc_block_FF(new_size-8);
-
 		if (new_address == NULL)
-			return NULL;
+		{
+			 return va;
+		}
 
-		//copy data to new address
-		char* new_ptr = (char*) new_address;
-        for (uint32 i = 0; i < data_size; i++)
-        {
-            new_ptr[i] = temp[i];
-        }
-        return new_address;
+		else
+		{
+			uint32 data_size = old_size - 8;
+			memcpy(new_address, va, data_size);
+			free_block(va);
+			return new_address;
+
+		}
 	}
 
 	// reallocating with smaller size
