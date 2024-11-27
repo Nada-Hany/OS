@@ -201,6 +201,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		tmp += PAGE_SIZE;
 		numberOfFrames--;
 	}
+	slave_to_master[get_page_index(va)]=va;
 	return (void *) va;
 }
 
@@ -230,6 +231,8 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 
 	        return NULL;
 	    }
+
+	    slave_to_master[get_page_index(va)]=ret;
 	int numberOfPages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 
 	uint32 tmp = va;
@@ -263,7 +266,7 @@ void sfree(void* virtual_address)
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
 //	panic("sfree() is not implemented yet...!!");
-	uint32 Id = (uint32)virtual_address & 0x7FFFFFFF;
+	uint32 Id = slave_to_master[get_page_index((uint32)virtual_address)] & 0x7FFFFFFF;
 	sys_freeSharedObject(Id, virtual_address);
 }
 

@@ -9,7 +9,7 @@
 
 //2020
 #define UHP_USE_BUDDY 0
-
+uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
 void *malloc(uint32 size);
 void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable);
 void* sget(int32 ownerEnvID, char *sharedVarName);

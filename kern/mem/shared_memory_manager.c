@@ -147,21 +147,21 @@ struct Share* get_share(int32 ownerID, char* name)
 	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
 
 
-			if (!lock_already_held) {
-
-				acquire_spinlock(&AllShares.shareslock);
-			}
+//			if (!lock_already_held) {
+//
+//				acquire_spinlock(&AllShares.shareslock);
+//			}
 
 	LIST_FOREACH(obj, &AllShares.shares_list)
 	{
 		if (strcmp(name, obj->name) == 0 && ownerID == obj->ownerID) {
-			if (!lock_already_held)
-			release_spinlock(&AllShares.shareslock);
+//			if (!lock_already_held)
+//			release_spinlock(&AllShares.shareslock);
 			return obj;
 		}
 	}
-	if (!lock_already_held)
-	release_spinlock(&AllShares.shareslock);
+//	if (!lock_already_held)
+//	release_spinlock(&AllShares.shareslock);
 	return NULL;
 
 }
@@ -247,7 +247,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	struct FrameInfo** frames_shared = my_shared_object->framesStorage;
 	uint8 write = my_shared_object->isWritable;
 	uint32 num_of_frames = ROUNDUP(my_shared_object->size, PAGE_SIZE) / PAGE_SIZE;
-
+	//does this need lock
 	for(int i=0;i<num_of_frames;i++){
 
 
@@ -259,8 +259,8 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 		virtual_address+=PAGE_SIZE;
 
-//		frames_shared[i]->references++;
-		cprintf("=========>refs on these frames: %d\n", frames_shared[i]->references);
+
+//		cprintf("=========>refs on these frames: %d\n", frames_shared[i]->references);
 
 	}
 	my_shared_object->references = my_shared_object->references + 1;
@@ -283,10 +283,7 @@ void free_share(struct Share* ptrShare)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("free_share is not implemented yet");
 	//Your Code is Here...
-	int num_of_frames = ROUNDUP(ptrShare->size, PAGE_SIZE) / PAGE_SIZE;
-	for(int i=0;i<num_of_frames;i++){
-		free_frame(ptrShare->framesStorage[i]);
-	}
+	cprintf("will remove object\n");
 	LIST_REMOVE(&AllShares.shares_list, ptrShare);
 	kfree((void*)ptrShare->framesStorage);
 	kfree((void*)ptrShare);
@@ -301,30 +298,44 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
 	//lock TODO ????
-	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
-	if (!lock_already_held) {
-		acquire_spinlock(&AllShares.shareslock);
-	}
+	cprintf("stop1\n");
+
+	cprintf("stop2\n");
 	struct Share* share_ptr;
 	struct Share* found_share_ptr=NULL;
 	struct Env* myenv = get_cpu_proc(); //The calling environment
+	cprintf("stop3\n");
 	//searching for share object with its id
 	int number_of_page_tables = 0;
 	uint32 page_tables[1<<10];
 	uint32 virt_addrs[1<<10];
+	cprintf("stop4\n");
+	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+	if (!lock_already_held) {
+		acquire_spinlock(&AllShares.shareslock);
+	}
 	LIST_FOREACH(share_ptr, &AllShares.shares_list){
 		//if found unmap it from current process and remove page tables if they are empty
+		cprintf("stop5\n");
 		if(share_ptr->ID == sharedObjectID){
+			cprintf("stop6\n");
 			found_share_ptr = share_ptr;
 			break;
 		}
 	}
-	cprintf("number of refrences on %s: %d\n", found_share_ptr->name, found_share_ptr->references);
+	cprintf("stop7\n");
+
 	if(found_share_ptr==NULL){
+		cprintf("stop10\n");
 		return E_SHARED_MEM_NOT_EXISTS;
 	}
+	cprintf("number of refrences on %s: %d\n", found_share_ptr->name, found_share_ptr->references);
 	found_share_ptr->references--;
-
+	if (!lock_already_held) {
+				cprintf("stop8\n");
+				release_spinlock(&AllShares.shareslock);
+				cprintf("stop9\n");
+	}
 		cprintf("number of refrences on %s: %d\n", found_share_ptr->name, found_share_ptr->references);
 	//if this was the last reference then delete share obj
 	if(found_share_ptr->references==0){
@@ -365,14 +376,15 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 		}
 		//if a page table is empty remove it
 		if(empty){
+			cprintf("pt was empty\n");
 			uint32 * page_dir = myenv->env_page_directory;
 			kfree((void*)page_tables[i]);
 			pd_clear_page_dir_entry(page_dir, virt_addrs[i]);
 		}
 	}
+
 	tlbflush();
-	if (!lock_already_held) {
-			release_spinlock(&AllShares.shareslock);
-		}
+
+	cprintf("end of freesahred object\n");
 	return 0;
 }
