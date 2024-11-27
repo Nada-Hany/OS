@@ -43,6 +43,7 @@ int numOfKheapVACalls ;
 
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
+////asdasdASDSDsda
 uint32 start, segBreak, rLimit;
 
 uint32 virtual_addresses_pages_num [NUM_OF_KHEAP_PAGES];
