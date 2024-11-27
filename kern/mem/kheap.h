@@ -41,16 +41,9 @@ unsigned int kheap_physical_address(unsigned int virtual_address);
 
 int numOfKheapVACalls ;
 
+//struct spinlock pages_lock;
+uint32 virtual_addresses[1<<20];
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segBreak, rLimit;
-uint32 virtual_addresses[1<<20];
-uint32 virtual_addresses_pages_num [NUM_OF_KHEAP_PAGES];
-
-struct FreePage{
-	uint32 start_va;
-	uint32 num_of_free_pages;
-};
-
-struct FreePage free_consecutive_pages[((KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE)+2];
 #endif // FOS_KERN_KHEAP_H_
