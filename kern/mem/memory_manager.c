@@ -204,6 +204,7 @@ void free_frame(struct FrameInfo *ptr_frame_info)
 		initialize_frame_info(ptr_frame_info);
 		/*=============================================================================*/
 		// Fill this function in
+//		cprintf("freed a frame\n");
 		LIST_INSERT_HEAD(&MemFrameLists.free_frame_list, ptr_frame_info);
 		//LOG_STATMENT(cprintf("FN # %d FREED",to_frame_number(ptr_frame_info)));
 	}
