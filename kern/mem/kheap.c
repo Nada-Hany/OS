@@ -11,7 +11,8 @@
 //Return:
 //	On success: 0
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
-
+//struct spinlock pages_lock;
+uint32 virtual_addresses[1<<20];
 //struct sleeplock pages_lock_sleep;
 struct spinlock pages_lock_spin;
 uint32 virtual_addresses_pages_num [NUM_OF_KHEAP_PAGES];
@@ -47,6 +48,8 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 			panic("no enough memory to allocate a frame\n");
 		}
 		ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_WRITEABLE);
+		uint32 physical_address = to_physical_address(ptr_frame_info);
+			virtual_addresses[physical_address>>12]=va;
 		if (ret == E_NO_MEM){
 			free_frame(ptr_frame_info) ;
 			panic("No enough memory for page table!\n");
@@ -88,6 +91,8 @@ void* sbrk(int numOfPages)
 					panic("no enough memory to allocate a frame\n");
 				}
 				ret = map_frame(ptr_page_directory, ptr_frame_info, va, PERM_WRITEABLE);
+				uint32 physical_address = to_physical_address(ptr_frame_info);
+					virtual_addresses[physical_address>>12]=va;
 				if (ret == E_NO_MEM){
 					free_frame(ptr_frame_info) ;
 					panic("No enough memory for page table!\n");
@@ -141,6 +146,8 @@ void allocate_pages(uint32 start_va,uint32 size){
 		allocate_frame(&ptr_frame_info);
 
 		map_frame(ptr_page_directory, ptr_frame_info, to_map_page, PERM_WRITEABLE);
+		uint32 physical_address = to_physical_address(ptr_frame_info);
+			virtual_addresses[physical_address>>12]=to_map_page;
 		num_of_pages--;
 		start_va=start_va+PAGE_SIZE;
 	}
@@ -292,7 +299,8 @@ void kfree(void* virtual_address) {
 			uint32* ptr_page_table = NULL;
 			struct FrameInfo *ptr_frame = get_frame_info(ptr_page_directory, va,
 					&ptr_page_table);
-
+			uint32 pa = EXTRACT_ADDRESS(ptr_page_table[PTX(va)]);
+			virtual_addresses[pa>>12] = 0;
 			free_frame(ptr_frame);
 			unmap_frame(ptr_page_directory, va);
 
@@ -381,6 +389,8 @@ void reallocate_frames(uint32 new_start, uint32 old_start, int new_size, int old
 		struct FrameInfo *ptr_frame_info ;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, new_start, PERM_WRITEABLE);
+		uint32 physical_address = to_physical_address(ptr_frame_info);
+			virtual_addresses[physical_address>>12]=new_start;
 		memcpy((void *)new_start , (void *)old_start, PAGE_SIZE);
 		new_start += PAGE_SIZE;
 		old_start += PAGE_SIZE;
@@ -389,6 +399,8 @@ void reallocate_frames(uint32 new_start, uint32 old_start, int new_size, int old
 		struct FrameInfo *ptr_frame_info ;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, new_start, PERM_WRITEABLE);
+		uint32 physical_address = to_physical_address(ptr_frame_info);
+			virtual_addresses[physical_address>>12]=new_start;
 		new_start += PAGE_SIZE;
 	}
 }
@@ -500,6 +512,8 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						struct FrameInfo *ptr_frame_info ;
 						allocate_frame(&ptr_frame_info);
 						map_frame(ptr_page_directory, ptr_frame_info, start_add, PERM_WRITEABLE);
+						uint32 physical_address = to_physical_address(ptr_frame_info);
+							virtual_addresses[physical_address>>12]=start_add;
 						start_add += PAGE_SIZE;
 					}
 					return virtual_address;
