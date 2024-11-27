@@ -359,7 +359,6 @@ int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint
 {
 	// Fill this function in
 	uint32 physical_address = to_physical_address(ptr_frame_info);
-	virtual_addresses[physical_address>>12]=virtual_address;
 	uint32 *ptr_page_table;
 	if( get_page_table(ptr_page_directory, virtual_address, &ptr_page_table) == TABLE_NOT_EXIST)
 	{
@@ -459,7 +458,6 @@ void unmap_frame(uint32 *ptr_page_directory, uint32 virtual_address)
 	uint32 *ptr_page_table;
 	struct FrameInfo* ptr_frame_info = get_frame_info(ptr_page_directory, virtual_address, &ptr_page_table);
 	uint32 pa = EXTRACT_ADDRESS(ptr_page_table[PTX(virtual_address)]);
-	virtual_addresses[pa>>12] = 0;
 	if( ptr_frame_info != 0 )
 	{
 		if (ptr_frame_info->isBuffered && !CHECK_IF_KERNEL_ADDRESS((uint32)virtual_address))
