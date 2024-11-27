@@ -3,6 +3,7 @@
 #include <inc/memlayout.h>
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
+#include <kern/conc/sleeplock.h>
 
 //Initialize the dynamic allocator of kernel heap with the given start address, size & limit
 //All pages in the given range should be allocated
@@ -11,6 +12,16 @@
 //	On success: 0
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
 
+//struct sleeplock pages_lock_sleep;
+struct spinlock pages_lock_spin;
+uint32 virtual_addresses_pages_num [NUM_OF_KHEAP_PAGES];
+
+struct FreePage{
+	uint32 start_va;
+	uint32 num_of_free_pages;
+};
+
+struct FreePage free_consecutive_pages[((KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE)+2];
 int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate, uint32 daLimit)
 {
 	//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
@@ -19,6 +30,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	segBreak = (uint32) daStart + initSizeToAllocate;
 	rLimit = (uint32) daLimit;
 	memset(virtual_addresses, 0, sizeof(virtual_addresses));
+	init_spinlock(&pages_lock_spin,"pages lock");
 	if(segBreak>rLimit)
 		panic("initial size exceeds the given limit");
 
@@ -166,6 +178,12 @@ void* kmalloc(unsigned int size)
 //	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+	bool lock_already_held = holding_spinlock(&pages_lock_spin);
+
+					if (!lock_already_held)
+					{
+						acquire_spinlock(&pages_lock_spin);
+					}
 	if(isKHeapPlacementStrategyFIRSTFIT()){
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
 //			cprintf("from kmalloc\n");
@@ -189,16 +207,24 @@ void* kmalloc(unsigned int size)
 					break;
 				}
 			}
-			if(actual_start==0)
+			if(actual_start==0){
 				return NULL;
-
+				if(!lock_already_held){
+							release_spinlock(&pages_lock_spin);
+						}
+			}
 			allocate_pages(actual_start,size);
 			virtual_addresses_pages_num[get_page_index(actual_start)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
-
+			if(!lock_already_held){
+						release_spinlock(&pages_lock_spin);
+					}
 			return (void *)actual_start;
 		}
 	}
+	if(!lock_already_held){
+				release_spinlock(&pages_lock_spin);
+			}
 	return (void *) -1;
 }
 
@@ -249,10 +275,14 @@ void kfree(void* virtual_address) {
 		panic("invalid virtual address");
 	}
 
+	bool lock_already_held = holding_spinlock(&pages_lock_spin);
+
+	if (!lock_already_held) {
+		acquire_spinlock(&pages_lock_spin);
+	}
 	if (va < segBreak && va < rLimit) {
 		free_block(virtual_address);
 	} else if (va > rLimit + 4) {
-
 
 		uint32 num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
 
@@ -266,20 +296,22 @@ void kfree(void* virtual_address) {
 			free_frame(ptr_frame);
 			unmap_frame(ptr_page_directory, va);
 
-
 			va = va + PAGE_SIZE;
 
 			num_of_pages--;
 
 		}
-		add_to_free_pages(actual_start_free,virtual_addresses_pages_num[get_page_index(actual_start_free)]);
+		add_to_free_pages(actual_start_free,
+				virtual_addresses_pages_num[get_page_index(actual_start_free)]);
 		virtual_addresses_pages_num[get_page_index(actual_start_free)] = 0;
-
-
 
 	} else {
 		panic("invalid virtual address");
 	}
+	if (!lock_already_held) {
+		release_spinlock(&pages_lock_spin);
+	}
+
 	//you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
 
