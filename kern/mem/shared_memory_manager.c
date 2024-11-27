@@ -70,7 +70,9 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 	//Your Code is Here...
 
 
+
 	struct FrameInfo** frames = (struct FrameInfo**)kmalloc(numOfFrames * sizeof(struct FrameInfo *));
+
 	if(frames == NULL || (void*) frames == (void*) -1){
 		return NULL;
 	}
@@ -127,6 +129,7 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 
 	    return obj;
 
+
 }
 
 //=============================
@@ -179,7 +182,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 
 	//search if obj is already exist
 	if (get_share(ownerID, shareName) != NULL) {
-
+//		cprintf("shared already exists\n");
 		return E_SHARED_MEM_EXISTS;
 	}
 
@@ -187,7 +190,6 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 
 	// TODO check if no mem
 	if(num_of_pages > LIST_SIZE(&MemFrameLists.free_frame_list)){
-
 		return E_NO_SHARE;
 	}
 
@@ -199,8 +201,8 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
 
 
-	if (!lock_already_held) {
 
+	if (!lock_already_held) {
 		acquire_spinlock(&AllShares.shareslock);
 	}
 
@@ -209,6 +211,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	if (!lock_already_held) {
 		release_spinlock(&AllShares.shareslock);
 	}
+
 	uint32 start_va = (uint32) virtual_address;
 	int index_of_framesStorage = 0;
 	while (num_of_pages) {

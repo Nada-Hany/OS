@@ -120,6 +120,7 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 	 * */
 
 	//number of required pages
+
 	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
 
 	uint32 final_va = 0;
@@ -201,7 +202,9 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		tmp += PAGE_SIZE;
 		numberOfFrames--;
 	}
+
 	slave_to_master[get_page_index(va)]=va;
+
 	return (void *) va;
 }
 
@@ -212,6 +215,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
 	//panic("sget() is not implemented yet...!!");
+
 
 
 	    int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
@@ -233,6 +237,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 	    }
 
 	    slave_to_master[get_page_index(va)]=ret;
+
 	int numberOfPages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 
 	uint32 tmp = va;
@@ -242,6 +247,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 		tmp += PAGE_SIZE;
 		numberOfPages--;
 	}
+
 	return (void*)va;
 }
 
