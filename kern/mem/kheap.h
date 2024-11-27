@@ -41,8 +41,7 @@ unsigned int kheap_physical_address(unsigned int virtual_address);
 
 int numOfKheapVACalls ;
 
-//struct spinlock pages_lock;
-uint32 virtual_addresses[1<<20];
+
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segBreak, rLimit;
