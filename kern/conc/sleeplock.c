@@ -41,7 +41,7 @@ void acquire_sleeplock(struct sleeplock *lk)
 	while(lk->locked){
 		sleep(channel, lock);
 	}
-	lk->pid = get_cpu_proc()->env_id;
+	//lk->pid = get_cpu_proc()->env_id;
 	lk->locked = 1;
 	release_spinlock(lock);
 

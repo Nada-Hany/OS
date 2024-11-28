@@ -11,10 +11,9 @@
 //Return:
 //	On success: 0
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
-//struct spinlock pages_lock;
+struct sleeplock pages_lock_sleep;
+//struct spinlock pages_lock_spin;
 uint32 virtual_addresses[1<<20];
-//struct sleeplock pages_lock_sleep;
-struct spinlock pages_lock_spin;
 uint32 virtual_addresses_pages_num [NUM_OF_KHEAP_PAGES];
 
 struct FreePage{
@@ -31,7 +30,10 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	segBreak = (uint32) daStart + initSizeToAllocate;
 	rLimit = (uint32) daLimit;
 	memset(virtual_addresses, 0, sizeof(virtual_addresses));
-	init_spinlock(&pages_lock_spin,"pages lock");
+	//init lock
+//	init_spinlock(&pages_lock_spin,"pages lock");
+	init_sleeplock(&pages_lock_sleep,"pages lock sleep");
+
 	if(segBreak>rLimit)
 		panic("initial size exceeds the given limit");
 
@@ -178,60 +180,68 @@ void insertion_sort(int ind){
 	}
 }
 
-void* kmalloc(unsigned int size)
-{
+void* kmalloc(unsigned int size) {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
 //	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-	bool lock_already_held = holding_spinlock(&pages_lock_spin);
+	bool lock_already_held = holding_sleeplock(&pages_lock_sleep);
 
-					if (!lock_already_held)
-					{
-						acquire_spinlock(&pages_lock_spin);
-					}
-	if(isKHeapPlacementStrategyFIRSTFIT()){
-		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+	if (!lock_already_held) {
+		acquire_sleeplock(&pages_lock_sleep);
+	}
+	if (isKHeapPlacementStrategyFIRSTFIT()) {
+		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
 //			cprintf("from kmalloc\n");
+			if (!lock_already_held) {
+				release_sleeplock(&pages_lock_sleep);
+			}
 			return alloc_block_FF(size);
-		}else{
-			int free_frames=LIST_SIZE(&MemFrameLists.free_frame_list);
+		} else {
+			int free_frames = LIST_SIZE(&MemFrameLists.free_frame_list);
 
-			uint32 actual_start=0;
+			uint32 actual_start = 0;
 
-			for(int i=0;i<(KERNEL_HEAP_MAX-KERNEL_HEAP_START)/PAGE_SIZE;i++){
-				if(free_consecutive_pages[i].start_va==0)
+			for (int i = 0;
+					i < (KERNEL_HEAP_MAX - KERNEL_HEAP_START) / PAGE_SIZE;
+					i++) {
+				if (free_consecutive_pages[i].start_va == 0)
 					break;
-				if(free_consecutive_pages[i].num_of_free_pages*PAGE_SIZE>=size && free_frames*PAGE_SIZE>=size){
-					actual_start=free_consecutive_pages[i].start_va;
-					free_consecutive_pages[i].num_of_free_pages-=((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0));
-					free_consecutive_pages[i].start_va+=(((size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0))*PAGE_SIZE);
-					if(free_consecutive_pages[i].num_of_free_pages<=0){
+				if (free_consecutive_pages[i].num_of_free_pages * PAGE_SIZE
+						>= size && free_frames * PAGE_SIZE >= size) {
+					actual_start = free_consecutive_pages[i].start_va;
+					free_consecutive_pages[i].num_of_free_pages -= ((size
+							/ PAGE_SIZE) + ((size % PAGE_SIZE != 0) ? 1 : 0));
+					free_consecutive_pages[i].start_va += (((size / PAGE_SIZE)
+							+ ((size % PAGE_SIZE != 0) ? 1 : 0)) * PAGE_SIZE);
+					if (free_consecutive_pages[i].num_of_free_pages <= 0) {
 						remove_from_free_consecutive_pages(i);
 
 					}
 					break;
 				}
 			}
-			if(actual_start==0){
+			if (actual_start == 0) {
+				if (!lock_already_held) {
+									release_sleeplock(&pages_lock_sleep);
+								}
 				return NULL;
-				if(!lock_already_held){
-							release_spinlock(&pages_lock_spin);
-						}
+
 			}
-			allocate_pages(actual_start,size);
-			virtual_addresses_pages_num[get_page_index(actual_start)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			allocate_pages(actual_start, size);
+			virtual_addresses_pages_num[get_page_index(actual_start)] = (size
+					/ PAGE_SIZE) + ((size % PAGE_SIZE != 0) ? 1 : 0);
 			//cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
-			if(!lock_already_held){
-						release_spinlock(&pages_lock_spin);
-					}
-			return (void *)actual_start;
+			if (!lock_already_held) {
+				release_sleeplock(&pages_lock_sleep);
+			}
+			return (void *) actual_start;
 		}
 	}
-	if(!lock_already_held){
-				release_spinlock(&pages_lock_spin);
-			}
+	if (!lock_already_held) {
+		release_sleeplock(&pages_lock_sleep);
+	}
 	return (void *) -1;
 }
 
@@ -282,10 +292,15 @@ void kfree(void* virtual_address) {
 		panic("invalid virtual address");
 	}
 
-	bool lock_already_held = holding_spinlock(&pages_lock_spin);
+//	bool lock_already_held = holding_spinlock(&pages_lock_spin);
+//
+//	if (!lock_already_held) {
+//		acquire_spinlock(&pages_lock_spin);
+//	}
+	bool lock_already_held = holding_sleeplock(&pages_lock_sleep);
 
 	if (!lock_already_held) {
-		acquire_spinlock(&pages_lock_spin);
+		acquire_sleeplock(&pages_lock_sleep);
 	}
 	if (va < segBreak && va < rLimit) {
 		free_block(virtual_address);
@@ -300,7 +315,7 @@ void kfree(void* virtual_address) {
 			struct FrameInfo *ptr_frame = get_frame_info(ptr_page_directory, va,
 					&ptr_page_table);
 			uint32 pa = EXTRACT_ADDRESS(ptr_page_table[PTX(va)]);
-			virtual_addresses[pa>>12] = 0;
+			virtual_addresses[pa >> 12] = 0;
 			free_frame(ptr_frame);
 			unmap_frame(ptr_page_directory, va);
 
@@ -317,8 +332,11 @@ void kfree(void* virtual_address) {
 		panic("invalid virtual address");
 	}
 	if (!lock_already_held) {
-		release_spinlock(&pages_lock_spin);
-	}
+			release_sleeplock(&pages_lock_sleep);
+		}
+//	if (!lock_already_held) {
+//		release_spinlock(&pages_lock_spin);
+//	}
 
 	//you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
