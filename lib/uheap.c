@@ -17,6 +17,7 @@ void* sbrk(int increment)
 //=================================
 uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
 bool page_marked[NUM_OF_UHEAP_PAGES] = {0};
+uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
 
 int get_page_index(uint32 va)
 {
