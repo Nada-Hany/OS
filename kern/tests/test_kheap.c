@@ -380,7 +380,7 @@ int test_kmalloc_firstfit1()
 		freeFrames = (int)sys_calculate_free_frames() ;
 		freeDiskFrames = (int)pf_calculate_free_frames() ;
 		kfree(ptr_allocations[6]);
-		if(((int)pf_calculate_free_frames() - freeDiskFrames) !=  0)  { correct = 0; cprintf("11 Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
+		if(((int)pf_calculate_free_frames() - freeDiskFrames) !=  0)  { correct = 0; cprintf("11 Page file is changed while it's not expected to.  (pages are wrongly allocated/de-allocated in PageFile)\n"); }
 		if (((int)sys_calculate_free_frames() - freeFrames) < 768) { correct = 0; cprintf("11 Wrong free: \n"); }
 	}
 	if (correct)	eval+=10 ;
@@ -394,7 +394,7 @@ int test_kmalloc_firstfit1()
 		freeDiskFrames = (int)pf_calculate_free_frames() ;
 		ptr_allocations[8] = kmalloc(512*kilo - kilo);
 		if ((uint32) ptr_allocations[8] != (ACTUAL_START + 1*Mega)) { correct = 0; cprintf("12 Wrong start address for the allocated space... \n"); }
-		if(((int)pf_calculate_free_frames() - freeDiskFrames) !=  0)  { correct = 0; cprintf("12 Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
+		if(((int)pf_calculate_free_frames() - freeDiskFrames) !=  0)  { correct = 0; cprintf("12 Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n "); }
 		if ((freeFrames - (int)sys_calculate_free_frames()) < 128) { correct = 0; cprintf("12 Wrong allocation: \n"); }
 
 		//Allocate 1 MB - should be placed in 2nd hole
@@ -503,7 +503,7 @@ int test_kmalloc_firstfit2()
 
 	correct = 1 ;
 	//[2] Attempt to allocate space more than any available fragment
-	//	a) Create Fragments
+	// 	a) Create Fragments
 	cprintf("\n2. Allocate & Free to create fragments inside BOTH ALLOCATORS [10%]\n");
 	{
 		/*[1] PAGE ALLOCATOR PART*/
@@ -868,7 +868,7 @@ int test_fastfirstfit()
 		if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((freeFrames - sys_calculate_free_frames()) < (desiredSize)/PAGE_SIZE) panic("Wrong allocation");
 	}
-	cprintf("\nIf this test finishes in less than 5 SEC... TAKE YOUR BONUS :).\n");
+	cprintf("\nIf this test finishes in less than 5 SEC... TAKE YOUR BONUS :).\n ");
 	return 1;
 
 }
@@ -1893,7 +1893,7 @@ int test_kheap_virt_addr()
 			if (retrievedVA != 0)
 			{
 				if (correct)
-				{ correct = 0; cprintf("4.1 Wrong kheap_virtual_address\n retrieved va: %x]n", retrievedVA); }
+				{ correct = 0; cprintf("4.1 Wrong kheap_virtual_address\n retrieved va: %x\n", retrievedVA); }
 			}
 
 		}
@@ -2348,8 +2348,652 @@ int test_kfreelast()
 
 }
 
+//int test_krealloc() {
+//	panic("not implemented");
+//}
+
+void printAddresses(void* ptr_allocations[20]){
+	cprintf("addresses allocated ------------ \n");
+	for (int i =0; i<20;i++){
+
+	}
+
+}
+
 int test_krealloc() {
-	panic("not implemented");
+	cprintf("==============================================\n");
+	cprintf(
+			"MAKE SURE to have a FRESH RUN for this test\n(i.e. don't run any program/test before it)\n");
+	cprintf("==============================================\n");
+	char minByte = 1 << 7;
+	char maxByte = 0x7F;
+	short minShort = 1 << 15;
+	short maxShort = 0x7FFF;
+	int minInt = 1 << 31;
+	int maxInt = 0x7FFFFFFF;
+	char *byteArr, *byteArr2;
+	short *shortArr, *shortArr2;
+	int *intArr;
+	struct MyStruct *structArr;
+	int lastIndexOfByte, lastIndexOfByte2, lastIndexOfShort, lastIndexOfShort2,
+	lastIndexOfInt, lastIndexOfStruct;
+	//[1] Test calling krealloc with VA = NULL. It should call malloc
+	void* ptr_allocations[20] = { 0 };
+	char* ptr;
+	void* newAddress = NULL;
+	int freeDiskFrames;
+
+
+	int lastIndices[20] = { 0 };
+	int sums[20] = { 0 };
+	int freeFrames;
+	//[1] Allocate all
+	{
+		//Allocate 1 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[0] = krealloc(NULL, 1 * Mega - kilo);
+		if ((uint32) ptr_allocations[0] < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[0] != ACTUAL_START)
+			panic("krealloc: Wrong start address for allocated space");
+
+		if ((freeFrames - sys_calculate_free_frames()) != 256)
+			panic("krealloc: Wrong allocation: ");
+
+		lastIndices[0] = (1 * Mega - kilo) / sizeof(char) - 1;
+
+		//Allocate 1 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[1] = krealloc(NULL, 1 * Mega - kilo);
+		if ((uint32) ptr_allocations[1] < (KERNEL_HEAP_START + 1 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[1] != ACTUAL_START + (1 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 256)
+			panic("krealloc: Wrong allocation: ");
+
+		lastIndices[1] = (1 * Mega - kilo) / sizeof(char) - 1;
+
+		//Allocate 1 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[2] = krealloc(NULL, 1 * Mega - kilo);
+		if ((uint32) ptr_allocations[2] < (KERNEL_HEAP_START + 2 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[2] != ACTUAL_START + (2 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 256)
+			panic("krealloc: Wrong allocation: ");
+		lastIndices[2] = (1 * Mega - kilo) / sizeof(int) - 1;
+
+		//Allocate 1 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[3] = krealloc(NULL, 1 * Mega - kilo);
+		if ((uint32) ptr_allocations[3] < (KERNEL_HEAP_START + 3 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[3] != ACTUAL_START + (3 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 256)
+			panic("krealloc: Wrong allocation: ");
+		lastIndices[3] = (1 * Mega - kilo) / sizeof(int) - 1;
+
+		//Allocate 2 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[4] = krealloc(NULL, 2 * Mega - kilo);
+		if ((uint32) ptr_allocations[4] < (KERNEL_HEAP_START + 4 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[4] != ACTUAL_START + (4 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 512)
+			panic("krealloc: Wrong allocation: ");
+		lastIndices[4] = (2 * Mega - kilo) / sizeof(short) - 1;
+
+		//Allocate 2 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[5] = krealloc(NULL, 2 * Mega - kilo);
+		if ((uint32) ptr_allocations[5] < (KERNEL_HEAP_START + 6 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[5] != ACTUAL_START + (6 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 512)
+			panic("krealloc: Wrong allocation: ");
+		lastIndices[5] = (2 * Mega - kilo) / sizeof(short) - 1;
+
+		//Allocate 3 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[6] = krealloc(NULL, 3 * Mega - kilo);
+		if ((uint32) ptr_allocations[6] < (KERNEL_HEAP_START + 8 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[6] != ACTUAL_START + (8 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 768)
+			panic("Wrong allocation: ");
+		lastIndices[6] = (3 * Mega - kilo) / sizeof(struct MyStruct) - 1;
+
+		//Allocate 3 MB
+		freeFrames = sys_calculate_free_frames();
+		ptr_allocations[7] = krealloc(NULL, 3 * Mega - kilo);
+		if ((uint32) ptr_allocations[7] < (KERNEL_HEAP_START + 11 * Mega))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if ((uint32) ptr_allocations[7] != ACTUAL_START + (11 * Mega))
+			panic("krealloc: Wrong start address for allocated space");
+		if ((freeFrames - sys_calculate_free_frames()) != 768)
+			panic("krealloc: Wrong allocation: ");
+		lastIndices[7] = (3 * Mega - kilo) / sizeof(struct MyStruct) - 1;
+	}
+
+
+	char *byteArr1;
+	//[3] Test read write access
+	{
+		//cprintf("\nTest read write access");
+		//Test access for the first 1 MB
+		freeFrames = sys_calculate_free_frames();
+
+		//Write values
+		//In 1st 1 MB
+		lastIndexOfByte = (1 * Mega - kilo) / sizeof(char) - 1;
+		byteArr = (char *) ptr_allocations[0];
+		byteArr[0] = minByte;
+		byteArr[lastIndexOfByte] = maxByte;
+
+		//In 2nd 1 MB
+		ptr = (char*) ptr_allocations[1];
+		// 1 MB - kilo - 1
+		for (int i = 0; i <= lastIndices[1]; ++i) {
+			ptr[i] = 2;
+		}
+
+		//In 3rd 1 MB
+		intArr = (int*) ptr_allocations[2];
+		intArr[0] = 3;
+		intArr[lastIndices[2]] = 3;
+
+		//In 4th 1 MB
+		intArr = (int*) ptr_allocations[3];
+		for (int i = 0; i <= lastIndices[3]; ++i) {
+			intArr[i] = 4;
+		}
+
+		//In 1st 2 MB
+		shortArr = (short*) ptr_allocations[4];
+		for (int i = 0; i <= lastIndices[4]; ++i) {
+			shortArr[i] = 5;
+		}
+
+		//In the 2nd 2 MB
+		shortArr = (short*) ptr_allocations[5];
+		shortArr[0] = 6;
+		shortArr[lastIndices[5]] = 6;
+
+		//In the 1st 3 MB
+		structArr = (struct MyStruct *) ptr_allocations[6];
+		for (int i = 0; i <= lastIndices[6]; i++) {
+			structArr[i].a = 7;
+			structArr[i].b = 7;
+			structArr[i].c = 7;
+		}
+
+		//In the last 3 MB
+		structArr = (struct MyStruct*) ptr_allocations[7];
+		structArr[0].a = 8;
+		structArr[0].b = 8;
+		structArr[0].c = 8;
+		structArr[lastIndices[7]].a = 8;
+		structArr[lastIndices[7]].b = 8;
+		structArr[lastIndices[7]].c = 8;
+
+		//Read values: check that the values are successfully written
+		if (byteArr[0] != minByte || byteArr[lastIndices[0]] != maxByte)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		ptr = (char*) ptr_allocations[1];
+		if (ptr[0] != 2 || ptr[lastIndices[1]] != 2)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!, char = %c",
+					ptr[0]);
+
+		intArr = (int*) ptr_allocations[2];
+		if (intArr[0] != 3 || intArr[lastIndices[2]] != 3)
+			panic("Wrong allocation stored values are wrongly changed!");
+
+		intArr = (int*) ptr_allocations[3];
+		if (intArr[0] != 4 || intArr[lastIndices[3]] != 4)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		shortArr = (short*) ptr_allocations[4];
+		if (shortArr[0] != 5 || shortArr[lastIndices[4]] != 5)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		shortArr = (short*) ptr_allocations[5];
+		if (shortArr[0] != 6 || shortArr[lastIndices[5]] != 6)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		structArr = (struct MyStruct*) ptr_allocations[6];
+		if (structArr[0].a != 7 || structArr[lastIndices[6]].a != 7)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+		if (structArr[0].b != 7 || structArr[lastIndices[6]].b != 7)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+		if (structArr[0].c != 7 || structArr[lastIndices[6]].c != 7)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		structArr = (struct MyStruct*) ptr_allocations[7];
+		if (structArr[0].a != 8 || structArr[lastIndices[7]].a != 8)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+		if (structArr[0].b != 8 || structArr[lastIndices[7]].b != 8)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+		if (structArr[0].c != 8 || structArr[lastIndices[7]].c != 8)
+			panic(
+					"krealloc: Wrong allocation stored values are wrongly changed!");
+
+		if ((freeFrames - sys_calculate_free_frames()) != 0)
+			panic(
+					"krealloc: Wrong allocation pages are not loaded successfully into memory");
+
+	}
+	cprintf("\nkrealloc: current evaluation = 10%");
+
+	//[3] Test krealloc by passing size = 0
+	{
+		//kfree 1st 1 MB
+		freeFrames = sys_calculate_free_frames();
+		freeDiskFrames = pf_calculate_free_frames();
+		krealloc(ptr_allocations[0], 0);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+			panic(
+					"krealloc: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 256)
+			panic("krealloc: pages in memory are not freed correctly");
+
+		//kfree 3rd 1 MB
+		freeFrames = sys_calculate_free_frames();
+		freeDiskFrames = pf_calculate_free_frames();
+
+		krealloc(ptr_allocations[2], 0);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+			panic(
+					"krealloc: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 256)
+			panic("krealloc: pages in memory are not freed correctly");
+
+		//kfree 2nd 2 MB
+		freeFrames = sys_calculate_free_frames();
+		freeDiskFrames = pf_calculate_free_frames();
+		krealloc(ptr_allocations[5], 0);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+			panic(
+					"Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 2 * Mega / PAGE_SIZE)
+			panic("krealloc: pages in memory are not freed correctly");
+
+		//kfree last 3 MB
+		freeFrames = sys_calculate_free_frames();
+		freeDiskFrames = pf_calculate_free_frames();
+		krealloc(ptr_allocations[7], 0);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+			panic(
+					"krealloc: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 3 * Mega / PAGE_SIZE)
+			panic(
+					"krealloc: Wrong kfree: pages in memory are not freed correctly");
+		//check tables	[15%]
+		{
+			long long va;
+			for (va = KERNEL_HEAP_START; va < (long long) KERNEL_HEAP_MAX; va +=
+					PTSIZE)
+			{
+				uint32 *ptr_table;
+				get_page_table(ptr_page_directory,  (uint32) va,
+						&ptr_table);
+				if (ptr_table == NULL) {
+					panic(
+							"Wrong kfree: one of the kernel tables is wrongly removed! Tables should not be removed here in kfree");
+				}
+			}
+		}
+	}
+	cprintf("\b\b\b20%");
+	//Check memory access after kfree by checking sum
+	{
+		//2nd 1 MB
+		//cprintf("2nd 1 MB\n");
+		ptr = (char*) ptr_allocations[1];
+		int i;
+		for (i = 0; i <= lastIndices[1]; ++i) {
+			sums[0] += ptr[i];
+
+		}
+		//cprintf("sum for 2nd 1 MB = %d LIM1 = %d\n", sums[0], (lastIndices[1] - 1));
+		if (sums[0] != (lastIndices[1] + 1) * 2)
+			panic("krealloc: invalid read after freeing some allocations");
+
+		//4th 1 MB
+		//cprintf("4th 1 MB\n");
+		intArr = (int*) ptr_allocations[3];
+
+		for (i = 0; i <= lastIndices[3]; ++i) {
+			sums[1] += intArr[i];
+		}
+		if (sums[1] != (lastIndices[3] + 1) * 4)
+			panic("krealloc: invalid read after freeing some allocations");
+
+		//1st 2 MB
+		//cprintf("1st 2 MB\n");
+		shortArr = (short*) ptr_allocations[4];
+
+		for (i = 0; i <= lastIndices[4]; ++i) {
+			sums[2] += shortArr[i];
+		}
+		if (sums[2] != (lastIndices[4] + 1) * 5)
+			panic("krealloc: invalid read after freeing some allocations");
+
+		//1st 3 MB
+		//cprintf("1st 3 MB\n");
+		structArr = (struct MyStruct*) ptr_allocations[6];
+
+		for (i = 0; i <= lastIndices[6]; ++i) {
+			sums[3] += structArr[i].a;
+			sums[4] += structArr[i].b;
+			sums[5] += structArr[i].c;
+		}
+		if (sums[3] != (lastIndices[6] + 1) * 7
+				|| sums[4] != (lastIndices[6] + 1) * 7
+				|| sums[5] != (lastIndices[6] + 1) * 7)
+			panic("krealloc: invalid read after freeing some allocations");
+
+	}
+	//[4] Test krealloc reallocation with valid and invalid sizes
+	{
+		int freeDiskFrames;
+		void* newAddress = NULL;
+		//Try to reallocate 2nd 1 MB with a size smaller than its current size (it should return the same VA and do nothing)
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[1], 15 * kilo);
+		lastIndices[1]= (15 * kilo) / sizeof(char) - 1;
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[1])
+			panic(
+					"krealloc: Wrong allocation: krealloc reallocated an address with the same size (it should return same VA)");
+		if (sys_calculate_free_frames() - freeFrames != 252)
+			panic(
+					"krealloc: Wrong number of frames after krealloc with the same size");
+		//Try to reallocate 1st 2 MB with a size smaller than its current size (it should return the same VA and do nothing)
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[4], 1 * Mega - kilo);
+		lastIndices[4] = (1 * Mega - kilo) / sizeof(short) - 1;
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[4])
+			panic(
+					"krealloc: Wrong allocation: krealloc reallocated an address with the same size (it should return same VA)");
+		if (sys_calculate_free_frames()-freeFrames != 256)
+			panic(
+					"krealloc: Wrong number of frames after krealloc with the same size");
+
+		//Try to reallocate 2nd 1 MB with the same size it should return the same VA
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[1], 1 * Mega - kilo);
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[1])
+			panic(
+					"krealloc: Wrong allocation: krealloc reallocated an address with the same size (it should return same VA)");
+		if (freeFrames-sys_calculate_free_frames() != 252)
+			panic(
+					"krealloc: Wrong number of frames after krealloc with the same size");
+
+
+
+		//Try to reallocate 4th 1 MB with the same size it should return the same VA
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[3], 1 * Mega - kilo);
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[3])
+			panic(
+					"Wrong allocation: krealloc reallocated an address with the same size (it should return same VA)");
+		if (freeFrames != sys_calculate_free_frames())
+			panic(
+					"krealloc: Wrong number of frames after krealloc with the same size");
+	}
+	cprintf("\b\b\b30%");
+	{
+		//Reallocate 2nd 1 MB to 1 MB + 7 KB
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[1],(1 * Mega - kilo) + (7 * kilo));
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[1])
+			panic(
+					"Wrong allocation: krealloc reallocated a new address while there is a sufficient space after it (it should return same VA)");
+		if (freeFrames - sys_calculate_free_frames() != 2)
+			panic("krealloc: pages in memory are not loaded correctly");
+
+		//Reallocate 1st 2 MB to 2 MB + 2 MB
+		freeFrames = sys_calculate_free_frames();
+		newAddress = krealloc(ptr_allocations[4], (4 * Mega - kilo));
+		if ((uint32) newAddress < (KERNEL_HEAP_START))
+			panic("krealloc: Wrong start address for the allocated space... ");
+		if (newAddress != ptr_allocations[4])
+			panic(
+					"Wrong allocation: krealloc reallocated a new address while there is a sufficient space after it (it should return same VA)");
+		//2 MB only for the new size
+		if (freeFrames - sys_calculate_free_frames() != 512+256)
+			panic("krealloc: pages in memory are not loaded correctly");
+
+
+	}
+	cprintf("\b\b\b60%");
+//	//Test krealloc: Cut & paste
+//	{
+//		//Reallocate 1st 2 MB (already reallocated to 4 MB) to 10 MB. It should return new VA
+//		freeFrames = sys_calculate_free_frames();
+//		newAddress = krealloc(ptr_allocations[4], (10 * Mega - kilo));
+//		if ((uint32) newAddress < (KERNEL_HEAP_START))
+//			panic("krealloc: Wrong start address for the allocated space... ");
+//		if ((uint32) newAddress != ACTUAL_START + (11 * Mega))
+//			panic("krealloc: Wrong start address for reallocated space, NSA = %x\nbbb",(uint32 )newAddress);
+//		if (newAddress == ptr_allocations[4])
+//			panic("Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
+//		//6 MB only for the new size
+//		if (freeFrames - sys_calculate_free_frames() != 1536)
+//			panic("krealloc: pages in memory are not loaded correctly");
+//
+//		ptr_allocations[4] = newAddress;
+//		//lastIndices[4] = (10 * Mega - kilo) / sizeof(short) - 1;
+//
+//		//Reallocate 1st 3 MB to 6 MB
+//		freeFrames = sys_calculate_free_frames();
+//		newAddress = krealloc(ptr_allocations[6], (6 * Mega - kilo));
+//		if ((uint32) newAddress < (KERNEL_HEAP_START))
+//			panic("krealloc: Wrong start address for the allocated space... ");
+//		if ((uint32) newAddress != ACTUAL_START + (4 * Mega))
+//			panic(
+//					"Wrong allocation: krealloc reallocated a new address while there is a sufficient space after it (it should return same VA)");
+//		//3 MB only for the new size
+//		if (freeFrames - sys_calculate_free_frames() != 768)
+//			panic("krealloc: pages in memory are not loaded correctly");
+//		ptr_allocations[6]=newAddress ;
+//		//Reallocate 1st 3 MB (already reallocated to 6 MB) to 20 MB. It should return new VA
+//
+//		freeFrames = sys_calculate_free_frames();
+//		newAddress = krealloc(ptr_allocations[6], (20 * Mega - kilo));
+//		if ((uint32) newAddress < (KERNEL_HEAP_START))
+//			panic("krealloc: Wrong start address for the allocated space... ");
+//		if (newAddress == ptr_allocations[6])
+//			panic(
+//					"Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
+//		if ((uint32) newAddress != ACTUAL_START + (21 * Mega))
+//			panic("krealloc: Wrong start address for reallocated space");
+//		//3 MB only for the new size
+//		if (freeFrames - sys_calculate_free_frames() != 3584)
+//			panic("krealloc: pages in memory are not loaded correctly");
+//
+//		ptr_allocations[6] = newAddress;
+//
+//		//Test read write access for the new allocated size of 2nd 1 MB
+//		ptr = (char*) ptr_allocations[1]; //1 MB + 8 KB
+//		int i;
+//		sums[0] = 0;
+//		for (i = 0; i <= lastIndices[1]; ++i) {
+//			sums[0] += ptr[i];
+//		}
+//		//cprintf("sum for 2nd 1 MB = %d LIM1 = %d\n", sums[0], (lastIndices[1] - 1));
+//		if (sums[0] != (lastIndices[1] + 1) * 2)
+//			panic("krealloc: invalid read after re-allocations");
+//
+//		//Test read write access for the new allocated size of 1st 3 MB
+//		structArr = (struct MyStruct*) ptr_allocations[6];
+//
+//		sums[0] = 0;
+//		sums[1] = 0;
+//		sums[2] = 0;
+//		for (i = 0; i <= lastIndices[6]; ++i) {
+//			sums[0] += structArr[i].a;
+//			sums[1] += structArr[i].b;
+//			sums[2] += structArr[i].c;
+//
+//		}
+//		//cprintf("sum for 2nd 1 MB = %d LIM1 = %d\n", sums[0], (lastIndices[1] - 1));
+//		if (sums[0] != (lastIndices[6] + 1) * 7
+//				|| sums[1] != (lastIndices[6] + 1) * 7
+//				|| sums[2] != (lastIndices[6] + 1) * 7)
+//			panic("krealloc: invalid read after re-allocations");
+//
+//		//Test read write access for the new allocated size of 1st 2 MB
+//		shortArr = (short*) ptr_allocations[4];
+//
+//		sums[0] = 0;
+//		for (i = 0; i <= lastIndices[4]; ++i) {
+//			sums[0] += shortArr[i];
+//		}
+//		if (sums[0] != (lastIndices[4] + 1) * 5)
+//			panic("krealloc: invalid read after re-allocations");
+//
+//		//Test krealloc with size = 0 after krealloc 1st 3 MB to 20 MB
+//		freeFrames = sys_calculate_free_frames();
+//		freeDiskFrames = pf_calculate_free_frames();
+//		krealloc(ptr_allocations[6], 0);
+//		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+//			panic(
+//					"Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+//		if ((sys_calculate_free_frames() - freeFrames) != 20 * Mega / PAGE_SIZE)
+//			panic("krealloc: pages in memory are not freed correctly");
+//
+//		//Test kfree after krealloc 1st 2 MB to 10 MB
+//		freeFrames = sys_calculate_free_frames();
+//		freeDiskFrames = pf_calculate_free_frames();
+//		kfree(ptr_allocations[4]);
+//		if ((freeDiskFrames - pf_calculate_free_frames()) != 0)
+//			panic(
+//					"Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+//		if ((sys_calculate_free_frames() - freeFrames) != 10 * Mega / PAGE_SIZE)
+//			panic("krealloc: pages in memory are not freed correctly");
+//
+//		//check tables	[15%]
+//		{
+//			long long va;
+//			for (va = KERNEL_HEAP_START; va < (long long) KERNEL_HEAP_MAX; va +=
+//					PTSIZE)
+//			{
+//				uint32 *ptr_table;
+//				get_page_table(ptr_page_directory,  (uint32) va,
+//						&ptr_table);
+//				if (ptr_table == NULL) {
+//					panic(
+//							"Wrong kfree: one of the kernel tables is wrongly removed! Tables should not be removed here in kfree");
+//				}
+//			}
+//		}
+//
+//	}
+
+	 cprintf("\n---Start My test---\n");
+	 // alloc
+	 //  block to block
+	 uint32 *arr1 = kmalloc(sizeof(int) * 100);
+	// cprintf("old add (arr1): %u\n", arr1);
+	 for (int i = 0; i < 100; i++){
+	  arr1[i] = 101;
+	 }
+	 //  block to pages
+	 uint32 *arr2 = kmalloc(sizeof(int) * 200);
+	// cprintf("old add (arr2): %u\n", arr2);
+	 for (int i = 0; i < 200; i++){
+	  arr2[i] = 202;
+	 }
+	 // pages to block
+	 uint32 *arr3 = kmalloc(sizeof(int) * 5000);
+	// cprintf("old add (arr3): %u\n", arr3);
+	 for (int i = 0; i < 5000; i++){
+	  arr3[i] = 303;
+	 }
+	 // pages to pages
+	 uint32 *arr4 = kmalloc(sizeof(int) * 2000);
+
+	// cprintf("old add (arr4): %u\n", arr4);
+	 for (int i = 0; i < 2000; i++){
+	  arr4[i] = 404;
+	 }
+
+	 // realloc
+	 // block to block
+	 uint32 *new_arr1 = krealloc(arr1, sizeof(int) * 400);
+	// cprintf("new add (arr1): %u\n", new_arr1);
+	 for (int i = 0; i < 100; i++){
+	  if (new_arr1[i] != 101){
+	   panic("\nData not copied after realloc (block to block)\n");
+	  }
+	 }
+	 // block to pages
+	 uint32 *new_arr2 = krealloc(arr2, sizeof(int) * 8000);
+	// cprintf("new add (arr2): %u\n", new_arr2);
+	 for (int i = 0; i < 200; i++){
+	  if (new_arr2[i] != 202){
+	   panic("\nData not copied after realloc (block to pages)\n");
+	  }
+	 }
+	 // pages to block
+	 uint32 *new_arr3 = krealloc(arr3, sizeof(int) * 500);
+	// cprintf("new add (arr3): %u\n", new_arr3);
+	 for (int i = 0; i < 500; i++){
+	  if (new_arr3[i] != 303){
+	   panic("\nData not copied after realloc (pages to block)\n");
+	  }
+	 }
+	 // pages to pages
+	 uint32 *new_arr4 = krealloc(arr4, sizeof(int) * 6000);
+	// cprintf("new add (arr4): %u\n", new_arr4);
+	 for (int i = 0; i < 2000; i++){
+	  if (new_arr4[i] != 404){
+	   panic("\nData not copied after realloc (pages to pages)\n");
+	  }
+	 }
+	// cprintf("\n---end My test---\n");
+	int *res = (int*)kmalloc(sizeof(int)*5) ;
+	for (int i=0 ;i<5 ;i++)
+		res[i]=5 ;
+
+	while(krealloc(NULL,DYN_ALLOC_MAX_SIZE)!=NULL);
+
+	int * new_res = krealloc(res,DYN_ALLOC_MAX_SIZE) ;
+	if(new_res!=NULL)
+		panic("invalid!");
+	for(int i=0 ;i<5 ;i++)
+		if(res[i]!=5)
+			panic("invalid contents");
+	cprintf("\b\b\b100%\n");
+	cprintf("\nCongratulations!! test krealloc completed successfully.\n");
+	return 0;
 }
 
 
@@ -2358,21 +3002,477 @@ int test_krealloc_BF() {
 
 }
 
+//int test_krealloc_FF1()
+//{
+//	panic("not implemented");
+//
+//}
+//int test_krealloc_FF2()
+//{
+//	panic("not implemented");
+//
+//}
+//
+//int test_krealloc_FF3()
+//{
+//	panic("not implemented");
+//
+//}
+
+
+
+
 int test_krealloc_FF1()
 {
-	panic("not implemented");
+	cprintf("==============================================\n");
+	    cprintf("MAKE SURE to have a FRESH RUN for this test\n(i.e. don't run any program/test before it)\n");
+	    cprintf("==============================================\n");
+
+	    int eval = 0;
+	    bool correct = 1;
+	    int start_freeFrames = (int)sys_calculate_free_frames();
+	    int freeFrames, freeDiskFrames;
+	    void* ptr_allocations[10] = {0};
+
+	    cprintf("\n1. Allocate and Reallocate [50%]\n");
+	    correct = 1;
+	    {
+	        // Allocate 2 KB
+	        freeFrames = (int)sys_calculate_free_frames();
+	        freeDiskFrames = (int)pf_calculate_free_frames();
+	        ptr_allocations[0] = kmalloc(2 * kilo);
+	        if (ptr_allocations[0] == NULL) { correct = 0; cprintf("1 Failed to allocate 2 KB\n"); }
+
+	        // Reallocate to 4 KB
+	        ptr_allocations[0] = krealloc(ptr_allocations[0], 4 * kilo);
+	        if (ptr_allocations[0] == NULL) { correct = 0; cprintf("2 Failed to reallocate to 4 KB\n"); }
+	        if ((freeFrames - (int)sys_calculate_free_frames()) < 1) { correct = 0; cprintf("2 Wrong allocation: pages are not loaded successfully into memory\n"); }
+
+	        cprintf("passed 1st test case\n");
+
+	        // Check if the memory is intact
+	        char* byteArr = (char*)ptr_allocations[0];
+	        byteArr[0] = 1;
+	        if (byteArr[0] != 1) { correct = 0; cprintf("3 Memory corruption detected after realloc\n"); }
+
+	        // Reallocate to 1 KB
+	        ptr_allocations[0] = krealloc(ptr_allocations[0], 1 * kilo);
+	        if (ptr_allocations[0] == NULL) { correct = 0; cprintf("4 Failed to reallocate to 1 KB\n"); }
+
+	        // Free the memory
+	        kfree(ptr_allocations[0]);
+	    }
+	    if (correct) eval += 50;
+		cprintf(" --------- eval = %d ", eval);
+	    cprintf("\n2. Insufficient space [10%]\n");
+	    correct = 1;
+	    {
+	        // Allocate maximum space
+	        freeFrames = (int)sys_calculate_free_frames();
+	        uint32 sizeOfKHeap = (KERNEL_HEAP_MAX - ACTUAL_START);
+	        ptr_allocations[1] = kmalloc(sizeOfKHeap);
+	        if (ptr_allocations[1] == NULL) { correct = 0; cprintf("5 Failed to allocate maximum space\n"); }
+
+	        // Try reallocating beyond the maximum space
+	        if (krealloc(ptr_allocations[1], sizeOfKHeap + 1) != NULL) { correct = 0; cprintf("6 Reallocating beyond maximum space should return NULL\n"); }
+
+	        // Free the allocated memory
+	        kfree(ptr_allocations[1]);
+	    }
+	    if (correct) eval += 10;
+	    cprintf(" --------- eval = %d ", eval);
+	    cprintf("\n3. Reallocating to a smaller size [20%]\n");
+	    correct = 1;
+	    {
+	        // Allocate 4 KB
+	        ptr_allocations[2] = kmalloc(4 * kilo);
+	        if (ptr_allocations[2] == NULL) { correct = 0; cprintf("7 Failed to allocate 4 KB\n"); }
+	        freeFrames = (int)sys_calculate_free_frames();
+
+
+	        cprintf("free frames before re allocating = %d \n ", (int)sys_calculate_free_frames());
+	        // Reallocate to 2 KB
+	        ptr_allocations[2] = krealloc(ptr_allocations[2], 2 * kilo);
+	        if (ptr_allocations[2] == NULL) { correct = 0; cprintf("8 Failed to reallocate to 2 KB\n"); }
+	        cprintf("free frames after re allocating = %d \n ", (int)sys_calculate_free_frames());
+	        // Check if the memory is intact
+	        char* byteArr = (char*)ptr_allocations[2];
+	        byteArr[0] = 2;
+	        if (byteArr[0] != 2) { correct = 0; cprintf("9.1 Memory corruption detected after realloc\n"); }
+	        if((int)sys_calculate_free_frames() - freeFrames < 1) { correct = 0; cprintf("9.2 Pages not freed after realloc\n");}
+
+	        // Free the memory
+	        kfree(ptr_allocations [2]);
+	    }
+	    if (correct) eval += 20;
+	    cprintf(" --------- eval = %d ", eval);
+	    cprintf("\n4. Reallocating to zero size [10%]\n");
+	    correct = 1;
+	    {
+	        // Allocate 2 KB
+	        freeFrames = (int)sys_calculate_free_frames();
+	        ptr_allocations[3] = kmalloc(2 * kilo);
+	        if (ptr_allocations[3] == NULL) { correct = 0; cprintf("10 Failed to allocate 2 KB\n"); }
+
+	        // Reallocate to 0 KB
+	        ptr_allocations[3] = krealloc(ptr_allocations[3], 0);
+	        if (ptr_allocations[3] != NULL) { correct = 0; cprintf("11 Reallocating to 0 KB should return NULL\n"); }
+	    }
+	    if (correct) eval += 10;
+	    cprintf(" --------- eval = %d ", eval);
+	    cprintf("\n5. Reallocating to a larger size after freeing [10%]\n");
+		correct = 1;
+		{
+			// Allocate 1 KB
+			freeFrames = (int)sys_calculate_free_frames();
+			ptr_allocations[4] = kmalloc(1 * kilo);
+			if (ptr_allocations[4] == NULL) { correct = 0; cprintf("12 Failed to allocate 1 KB\n"); }
+
+			// Free the memory
+			kfree(ptr_allocations[4]);
+
+			// Reallocate to 2 KB
+			ptr_allocations[4] = krealloc(ptr_allocations[4], 2 * kilo);
+			if (ptr_allocations[4] != NULL) { correct = 0; cprintf("13 Reallocating after free should return NULL\n"); }
+		}
+		if (correct) eval += 10;
+		cprintf(" --------- eval = %d ", eval);
+	    cprintf("\ntest krealloc (1) completed. Evaluation = %d%\n", eval);
+	    return 1;
 
 }
 int test_krealloc_FF2()
 {
-	panic("not implemented");
+	cprintf("==============================================\n");
+	cprintf("Page Allocator to Page Allocator Tests\n");
+	cprintf("==============================================\n");
+
+	int eval = 0;
+	bool correct = 1;
+	void* ptr = NULL;
+
+	cprintf("\n1. Basic Allocation and Reallocation [20%]\n");
+	{
+		ptr = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+		if (ptr == NULL) { correct = 0; cprintf("1 Failed to allocate 4 KB\n"); }
+
+		void* newPtr = krealloc(ptr, 8 * kilo); // Reallocate to 8 KB
+		if (newPtr == NULL) { correct = 0; cprintf("2 Failed to reallocate to 8 KB\n"); }
+		else ptr = newPtr; // Update pointer if successful
+
+		kfree(ptr); // Free the memory
+	}
+	if (correct) eval += 20;
+	correct = 1;
+
+	cprintf("\n2. Reallocation to a Smaller Size [20%]\n");
+	{
+		ptr = krealloc(NULL, 8 * kilo); // Allocate 8 KB
+		if (ptr == NULL) { correct = 0; cprintf("3 Failed to allocate 8 KB\n"); }
+
+		void* newPtr = krealloc(ptr, 4 * kilo); // Reallocate to 4 KB
+		if (newPtr == NULL) { correct = 0; cprintf("4 Failed to reallocate to 4 KB\n"); }
+		else {
+			char* byteArr = (char*)newPtr;
+			byteArr[0] = 1; // Check memory integrity
+			if (byteArr[0] != 1) { correct = 0; cprintf("5 Memory corruption detected after realloc\n"); }
+			ptr = newPtr; // Update pointer
+		}
+
+		kfree(ptr); // Free the memory
+	}
+	if (correct) eval += 20;
+	correct = 1;
+
+	cprintf("\n3. Reallocation to Zero Size [20%]\n");
+	{
+		ptr = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+		if (ptr == NULL) { correct = 0; cprintf("6 Failed to allocate 4 KB\n"); }
+
+		ptr = krealloc(ptr, 0); // Reallocate to 0 KB
+		if (ptr != NULL) { correct = 0; cprintf("7 Reallocating to 0 KB should return NULL\n"); }
+	}
+	if (correct) eval += 20;
+	correct = 1;
+
+	cprintf("\n4. Reallocation After Freeing [20%]\n");
+	{
+		ptr = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+		if (ptr == NULL) { correct = 0; cprintf("8 Failed to allocate 4 KB\n"); }
+
+		kfree(ptr); // Free the memory
+
+		ptr = krealloc(ptr, 8 * kilo); // Attempt to reallocate after free
+		if (ptr != NULL) { correct = 0; cprintf("9 Reallocating after free should return NULL\n"); }
+	}
+	if (correct) eval += 20;
+	correct = 1;
+
+	cprintf("\n5. Insufficient Space Handling [20%]\n");
+	{
+		ptr = krealloc(NULL, KERNEL_HEAP_MAX - ACTUAL_START); // Allocate maximum space
+		if (ptr == NULL) { correct = 0; cprintf("10 Failed to allocate maximum space\n"); }
+
+		void* newPtr = krealloc(ptr, KERNEL_HEAP_MAX - ACTUAL_START + 1); // Attempt to reallocate beyond max
+		if (newPtr != NULL) { correct = 0; cprintf("11 Reallocating beyond maximum space should return NULL\n"); }
+
+		kfree(ptr); // Free the memory
+	}
+	if (correct) eval += 20;
+
+	cprintf("\ntest krealloc (2) completed. Evaluation = %d%\n", eval);
+	return 1;
 
 }
 
 int test_krealloc_FF3()
 {
-	panic("not implemented");
+	cprintf("==============================================\n");
+	    cprintf("Page Allocator Realloc Test Cases\n");
+	    cprintf("==============================================\n");
 
+	    int eval = 1;
+	    bool correct = 1;
+	    void* ptr1 = NULL;
+	    void* ptr2 = NULL;
+	    int freeFrames = (int)sys_calculate_free_frames();
+
+	    cprintf("\n1. Case 7.1: Next Block is Allocated [33%]\n\n");
+
+	    cprintf("	7.1.1: Next block is allocated and size is equal\n\n");
+	    // Case 7.1.1: Next block is allocated and size is equal, then just return NULL
+	    {
+	        ptr1 = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("1.1 Failed to allocate 4 KB\n"); }
+
+	        ptr2 = krealloc(NULL, 3 * kilo); // Allocate another 4 KB (next block)
+	        if (ptr2 == NULL) { correct = 0; cprintf("1.2 Failed to allocate 4 KB for next block\n"); }
+
+	        void* result = krealloc(ptr1, 4 * kilo); // Attempt to reallocate to the same size
+	        if (result != ptr1) { correct = 0; cprintf("1.3 Reallocating to the same size should return NULL\n"); }
+
+	        kfree(ptr1);
+	        kfree(ptr2);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+	    cprintf("	7.1.2: Next block is allocated and size is increased\n\n");
+	    // Case 7.1.2: Next block is allocated and size is increased
+	    {
+	        ptr1 = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("2.1 Failed to allocate 4 KB\n"); }
+
+	        freeFrames = (int)sys_calculate_free_frames();
+
+	        ptr2 = krealloc(NULL, 8 * kilo); // Allocate 8 KB (next block)
+	        if (ptr2 == NULL) { correct = 0; cprintf("2.2 Failed to allocate 8 KB for next block\n"); }
+
+	        void* result = krealloc(ptr1, 6 * kilo); // Attempt to reallocate to a larger size
+	        if (result == NULL) { correct = 0; cprintf("2.3 Failed to reallocate to 6 KB\n"); }
+	        else if(result == ptr1) { correct = 0; cprintf("2.4 reloctation failed\n"); }
+	        else if(freeFrames - (int)sys_calculate_free_frames() < 1) { correct = 0; cprintf("2.5 Pages are not allocated after realloc\n");}
+	        else {
+	            kfree(ptr1); // Free the old pointer
+	            ptr1 = result; // Update pointer
+	        }
+
+	        kfree(ptr1);
+	        kfree(ptr2);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+	    cprintf("7.1.3: Next block is allocated and size is decreased\n\n");
+	    // Case 7.1.3: Next block is allocated and size is decreased
+	    {
+	        ptr1 = krealloc(NULL, 8 * kilo); // Allocate 8 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("3.1 Failed to allocate 8 KB\n"); }
+
+	        freeFrames = (int)sys_calculate_free_frames();
+
+	        ptr2 = krealloc(NULL, 4 * kilo); // Allocate 4 KB (next block)
+	        if (ptr2 == NULL) { correct = 0; cprintf("3.2 Failed to allocate 4 KB for next block\n"); }
+
+	        void* result = krealloc(ptr1, 4 * kilo); // Attempt to reallocate to a smaller size
+	        if (result == NULL) { correct = 0; cprintf("3.3 Failed to reallocate to 4 KB\n"); }
+	        else if((int)sys_calculate_free_frames() != freeFrames) { correct = 0; cprintf("3.4 Pages are not freed after realloc\n");}
+	        else {
+	            // Simulate adding a new free block in between
+	            // Assuming we have a function to manage free blocks
+	            // AddFreeBlock((char*)result + 6 * kilo, 2 * kilo); // Pseudo-code for managing free space
+	            kfree(ptr1); // Free the old pointer
+	            ptr1 = result; // Update pointer
+	        }
+
+	        kfree(ptr1);
+	        kfree(ptr2);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+	    cprintf("\n2. Case 7.2: Next Block is Free [33%]\n\n");
+
+	    cprintf("	7.2.1: Next block is free and size is equal\n\n");
+	    // Case 7.2.1: Next block is free and size is equal, then just return NULL
+	    {
+	        ptr1 = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("4.1 Failed to allocate 4 KB\n"); }
+
+	        // Simulate a free block after ptr1
+	        // AddFreeBlock((char*)ptr1 + 4 * kilo, 4 * kilo); // Pseudo-code for managing free space
+
+	        void* result = krealloc(ptr1, 3 * kilo); // Attempt to reallocate to the same size
+	        if (result != ptr1) { correct = 0; cprintf("4.2 Reallocating to the same size should return NULL\n"); }
+
+	        kfree(ptr1);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+	    cprintf("	7.2.2: Next block is free and size is increased\n\n");
+	    // Case 7.2.2: Next block is free and size is increased
+	    {
+	        ptr1 = krealloc(NULL, 4 * kilo); // Allocate 4 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("5.1 Failed to allocate 4 KB\n"); }
+
+	        // Simulate a free block after ptr1
+	        // AddFreeBlock((char*)ptr1 + 4 * kilo, 8 * kilo); // Pseudo-code for managing free space
+
+	        freeFrames = (int)sys_calculate_free_frames();
+
+	        void* result = krealloc(ptr1, 6 * kilo); // Attempt to reallocate to a larger size
+	        if (result == NULL) { correct = 0; cprintf("5.2 Failed to reallocate to 6 KB\n"); }
+	        else if(freeFrames - (int)sys_calculate_free_frames() < 1) { correct = 0; cprintf("5.3 Extra pages are not allocated after realloc\n");}
+	        else {
+	            kfree(ptr1); // Free the old pointer
+	            ptr1 = result; // Update pointer
+	        }
+
+	        kfree(ptr1);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+	    cprintf("	7.2.3: Next block is free and size is decreased\n\n");
+	    // Case 7.2.3: Next block is free and size is decreased
+	    {
+	        ptr1 = krealloc(NULL, 8 * kilo); // Allocate 8 KB
+	        if (ptr1 == NULL) { correct = 0; cprintf("6.1 Failed to allocate 8 KB\n"); }
+
+	        freeFrames = (int)sys_calculate_free_frames();
+
+	        // Simulate a free block after ptr1
+	        // AddFreeBlock((char*)ptr1 + 8 * kilo, 4 * kilo); // Pseudo-code for managing free space
+
+	        void* result = krealloc(ptr1, 4 * kilo); // Attempt to reallocate to a smaller size
+	        if (result == NULL) { correct = 0; cprintf("6.2 Failed to reallocate to 4 KB\n"); }
+	        else if((int)sys_calculate_free_frames() - freeFrames < 1) { correct = 0; cprintf("6.3 Pages not freed after realloc\n");}
+	        else {
+	            // Simulate increasing the size of the next free block
+	            // IncreaseFreeBlockSize((char*)result + 6 * kilo, 2 * kilo); // Pseudo-code for managing free space
+	            kfree(ptr1); // Free the old pointer
+	            ptr1 = result; // Update pointer
+	        }
+
+	        kfree(ptr1);
+	    }
+	    if (correct) eval += 11;
+	    cprintf(" --------- eval = %d \n", eval);
+		correct = 1;
+
+		cprintf("\n3. Special Case 7.3: There is no next block [33%]\n\n");
+		cprintf("	7.3.1: Size is equal\n\n");
+	    // Step 1: Allocate a block of memory
+		void* ptr = krealloc(NULL, KERNEL_HEAP_MAX - ACTUAL_START - 8 * kilo); // Allocate all space except last 8 kilos
+		if (ptr == NULL) {
+			correct = 0;
+			cprintf("7 Failed to allocate all space except last 8 kilos\n");
+		}
+
+		// Step 2: Allocate another block to take the rest of the space
+		void* newPtr = krealloc(NULL, 8 * kilo); // Allocate last 8 kilos
+		cprintf("\nfree frames = %d 3390\n", sys_calculate_free_frames());
+		if (newPtr == NULL) {
+			correct = 0;
+			cprintf("8 Failed to allocate 8 KB free frames = %d\n", sys_calculate_free_frames());
+		} else {
+			cprintf("\nfree frames = %d before freeing line 3395\n", sys_calculate_free_frames());
+			// Step 3: Free the first allocation to make a hole
+			kfree(ptr); // Free the old pointer
+		}
+		cprintf("\nfree frames after freeing line 3399 = %d\n", sys_calculate_free_frames());
+		freeFrames = (int)sys_calculate_free_frames();
+
+		void* newPtr2 = krealloc(newPtr, 6 * kilo);
+
+		if(freeFrames != (int)sys_calculate_free_frames()) { correct = 0; cprintf("9 Pages not freed after realloc\n");}
+
+		if (correct) eval += 11;
+		cprintf(" --------- eval = %d  3407\n", eval);
+		kfree(newPtr);
+
+		cprintf("	7.3.2: Size is increased\n\n");
+		// Step 1: Allocate a block of memory
+		cprintf("\nfree frames = %d\n", sys_calculate_free_frames());
+		ptr = krealloc(NULL, KERNEL_HEAP_MAX - ACTUAL_START - 8 * kilo); // Allocate all space except last 8 kilos
+		if (ptr == NULL) {
+			correct = 0;
+			cprintf("7 Failed to allocate all space except last 8 kilos\n");
+		}
+		cprintf("\nfree frames = %d\n", sys_calculate_free_frames());
+		// Step 2: Allocate another block to take the rest of the space
+		newPtr = krealloc(NULL, 8 * kilo); // Allocate last 8 kilos
+		if (newPtr == NULL) {
+			correct = 0;
+			cprintf("8 Failed to allocate 8 KB\n");
+		} else {
+			// Step 3: Free the first allocation to make a hole
+			kfree(ptr); // Free the old pointer
+		}
+
+		freeFrames = (int)sys_calculate_free_frames();
+
+		newPtr2 = krealloc(newPtr, 8 * kilo + 1);
+
+		if(newPtr2 == newPtr) {correct = 0; cprintf("9.1 Failed to reallocate\n");}
+		else if(freeFrames - (int)sys_calculate_free_frames() < 1) { correct = 0; cprintf("9.2 Pages not freed after realloc\n");}
+
+		kfree(newPtr);
+		kfree(newPtr2);
+		cprintf("\after kfree newptr1, ptr2\n");
+		if (correct) eval += 11;
+		cprintf(" --------- eval = %d \n", eval);
+		cprintf("	7.3.3: Size is decreased\n\n");
+		// Step 1: Allocate a block of memory
+		ptr = krealloc(NULL, KERNEL_HEAP_MAX - ACTUAL_START - (8 * kilo)); // Allocate all space except last 8 kilos
+		if (ptr == NULL) {
+			correct = 0;
+			cprintf("7 Failed to allocate all space except last 8 kilos\n");
+		}
+
+		// Step 2: Allocate another block to take the rest of the space
+		newPtr = krealloc(NULL, 8 * kilo); // Allocate last 8 kilos
+		if (newPtr == NULL) {
+			correct = 0;
+			cprintf("8 Failed to allocate 8 KB\n");
+		} else {
+			// Step 3: Free the first allocation to make a hole
+			kfree(ptr); // Free the old pointer
+		}
+
+		freeFrames = (int)sys_calculate_free_frames();
+
+		newPtr2 = krealloc(newPtr, 3 * kilo);
+
+		if((int)sys_calculate_free_frames() - freeFrames < 1) { correct = 0; cprintf("9 Pages not freed after realloc\n");}
+
+		if (correct) eval += 11;
+		cprintf(" --------- eval = %d \n", eval);
+		kfree(newPtr);
+
+	    cprintf("\ntest krealloc (3) completed. Evaluation = %d%\n", eval);
+	    return 1;
 }
+
+
+
+
+
 
 

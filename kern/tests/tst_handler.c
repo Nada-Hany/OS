@@ -455,33 +455,62 @@ int tst_kheap(int number_of_arguments, char **arguments)
 		return 0;
 	}
 	// Test 5-krealloc: tst kheap BF krealloc
-	else if (strcmp(arguments[2], "krealloc") == 0)
-	{
-		uint32 testNum = strtol(arguments[3], NULL, 10);
-		if (isKHeapPlacementStrategyFIRSTFIT())
-		{
-			if (testNum == 0)
-			{
-				cprintf("Error: [Kernel.FirstFit] must specify the test number (1 or 2) as an argument\n");
-				return 0;
-			}
-			if (testNum == 1)
-				test_krealloc_FF1();
-			else if (testNum == 2)
-				test_krealloc_FF2();
-			else if (testNum == 3)
-				test_krealloc_FF3();
-		}
-		if (isKHeapPlacementStrategyNEXTFIT())
-		{
-			test_krealloc();
-		}
-		if (isKHeapPlacementStrategyBESTFIT())
-		{
-			test_krealloc_BF();
-		}
-		return 0;
-	}
+//	else if (strcmp(arguments[2], "krealloc") == 0)
+//	{
+//		uint32 testNum = strtol(arguments[3], NULL, 10);
+//		if (isKHeapPlacementStrategyFIRSTFIT())
+//		{
+//			if (testNum == 0)
+//			{
+//				cprintf("Error: [Kernel.FirstFit] must specify the test number (1 or 2) as an argument\n");
+//				return 0;
+//			}
+//			if (testNum == 1)
+//				test_krealloc_FF1();
+//			else if (testNum == 2)
+//				test_krealloc_FF2();
+//			else if (testNum == 3)
+//				test_krealloc_FF3();
+//		}
+//		if (isKHeapPlacementStrategyNEXTFIT())
+//		{
+//			test_krealloc();
+//		}
+//		if (isKHeapPlacementStrategyBESTFIT())
+//		{
+//			test_krealloc_BF();
+//		}
+//		return 0;
+//	}
+	//tst kheap FF krealloc 1
+	else if(strcmp(arguments[2], "krealloc") == 0)
+	    {
+	        uint32 testNum = strtol(arguments[3], NULL, 10);
+	        if(isKHeapPlacementStrategyFIRSTFIT())
+	        {
+	            if (testNum == 0)
+	            {
+	                test_krealloc();
+//	                cprintf("Error: [Kernel.FirstFit] must specify the test number (1 or 2) as an argument\n");
+//	                return 0;
+	            }
+	            else if (testNum==1)
+	                test_krealloc_FF1();
+	            else if (testNum==2)
+	                test_krealloc_FF2();
+	            else if (testNum==3)
+	                test_krealloc_FF3();
+	        }
+	        if (isKHeapPlacementStrategyNEXTFIT())
+	        {
+	            test_krealloc();
+	        }
+	        if (isKHeapPlacementStrategyBESTFIT())
+	        {
+	            test_krealloc_BF();
+	        }
+	        return 0;
+	    }
 	// Test 6-sbr: tst kheap FF sbrk
 	else if (strcmp(arguments[2], "sbrk") == 0)
 	{
