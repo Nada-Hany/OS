@@ -523,7 +523,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			new_address = kmalloc(new_size);
 
 			if (new_address == NULL)
-				return virtual_address;
+				return NULL;
 
 			uint32 old_block_size = get_block_size(virtual_address) - 8;
 			// copy data without considering footer data
@@ -547,7 +547,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			new_address = alloc_block_FF(new_size);
 
 			if (new_address == NULL)
-				return virtual_address;
+				return NULL;
 
 			memcpy(new_address, virtual_address, new_size);
 			kfree(virtual_address);
@@ -565,7 +565,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				uint32 start_add = va + old_pages * PAGE_SIZE;
 
 				if (free_frames < neededPages)
-					return virtual_address;
+					return NULL;
 
 				// if there's enough space after old pages to be allocated
 				if (canAlocateAfter(start_add, neededPages))
@@ -579,7 +579,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					// cprintf("krealloc: reallocating a different place\n");
 					new_address = kmalloc(new_size);
 					if (new_address == NULL)
-						return virtual_address;
+						return NULL;
 
 					memcpy(new_address, virtual_address, old_size);
 					kfree(virtual_address);
