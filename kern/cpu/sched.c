@@ -249,14 +249,24 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - sched_init_PRIRR
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+//	panic("Not implemented yet");
 
+	cprintf("inside sched_init_PRIRR function \n");
 
+	num_of_ready_queues = numOfPriorities;
 
+	ProcessQueues.env_ready_queues = kmalloc(num_of_ready_queues * sizeof(struct Env_Queue));
+	for(int i=0; i<num_of_ready_queues; i++){
+		init_queue(&(ProcessQueues.env_ready_queues[i]));
+	}
 
+	quantums = kmalloc(sizeof(uint8)) ;
+	quantums[0] = quantum;
+	kclock_set_quantum(quantums[0]);
 
+	cprintf("1st quantum = %d -- with address = %x\n", quantums[0] ,quantums);
 
-
+	//+ assigning starvation threshold
 
 
 	//=========================================
@@ -267,6 +277,8 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	scheduler_method = SCH_PRIRR;
 	//=========================================
 	//=========================================
+
+	cprintf("end of sched_init_PRIRR function \n");
 }
 
 //=========================
