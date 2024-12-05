@@ -6,8 +6,14 @@ struct semaphore create_semaphore(char *semaphoreName, uint32 value)
 {
 	//TODO: [PROJECT'24.MS3 - #02] [2] USER-LEVEL SEMAPHORE - create_semaphore
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_semaphore is not implemented yet");
+	//panic("create_semaphore is not implemented yet");
 	//Your Code is Here...
+	struct semaphore sem = smalloc(semaphoreName, sizeof(struct semaphore), 1);
+	sem.semdata->name=semaphoreName;
+	sem.semdata->count=value;
+	sem.semdata->lock=0;
+	LIST_INIT(sem.semdata->queue);
+	return sem;
 }
 struct semaphore get_semaphore(int32 ownerEnvID, char* semaphoreName)
 {
@@ -39,7 +45,7 @@ void signal_semaphore(struct semaphore sem)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("signal_semaphore is not implemented yet");
 	//Your Code is Here...
-	dequeue(sem.semdata->queue);
+//	dequeue(sem.semdata->queue);
 }
 
 int semaphore_count(struct semaphore sem)
