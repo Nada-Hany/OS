@@ -37,8 +37,9 @@ void signal_semaphore(struct semaphore sem)
 {
 	//TODO: [PROJECT'24.MS3 - #05] [2] USER-LEVEL SEMAPHORE - signal_semaphore
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("signal_semaphore is not implemented yet");
+	//panic("signal_semaphore is not implemented yet");
 	//Your Code is Here...
+	dequeue(sem.semdata->queue);
 }
 
 int semaphore_count(struct semaphore sem)
