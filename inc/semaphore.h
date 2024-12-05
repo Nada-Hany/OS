@@ -3,7 +3,6 @@
 #define FOS_INC_SEMAPHORE_H
 
 #include <inc/environment_definitions.h>
-#include <OS/kern/cpu/sched_helpers.h>
 
 struct __semdata
 {
