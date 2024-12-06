@@ -467,6 +467,10 @@ int sys_create_env(char* programName, unsigned int page_WS_size,unsigned int LRU
 	return env->env_id;
 }
 
+void sys_env_set_priority(int32 envID, int priority){
+	env_set_priority(envID, priority);
+}
+
 //Place a new env into the READY queue
 void sys_run_env(int32 envId)
 {
@@ -519,6 +523,10 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		break;
 	case SYS_allocate_user_mem:
 		sys_allocate_user_mem(a1,a2);
+		return 0;
+		break;
+	case SYS_env_set_priority:
+		sys_env_set_priority((int32)a1, (int)a2);
 		return 0;
 		break;
 	//======================================================================

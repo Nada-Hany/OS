@@ -55,6 +55,8 @@ struct
 //2017
 //#define CLOCK_INTERVAL_IN_CNTS TIMER_DIV((1000/CLOCK_INTERVAL_IN_MS))
 
+uint32 starv_thresh;
+
 /*2023*/
 /********* for BSD Priority Scheduler *************/
 #define PRI_MIN 0
