@@ -74,7 +74,7 @@ void wakeup_one(struct Channel *chan)
 	// change its state to ready
 	currentProcess->env_status = ENV_READY;
 	// add it to the ready queue
-	sched_insert_ready0(currentProcess);
+	sched_insert_ready(currentProcess);
 
 	release_spinlock(&ProcessQueues.qlock);
 	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one.
@@ -103,7 +103,7 @@ void wakeup_all(struct Channel *chan)
 		// change its state to ready
 		currentProcess->env_status = ENV_READY;
 		// add it to the ready queue
-		sched_insert_ready0(currentProcess);
+		sched_insert_ready(currentProcess);
 	}
 
 	release_spinlock(&ProcessQueues.qlock);
