@@ -380,7 +380,7 @@ void clock_interrupt_handler(struct Trapframe* tf)
 //		panic("Not implemented yet");
 
 		uint32 curernt_ticks = timer_ticks();
-		bool lock_already_held = holding_sleeplock(&ProcessQueues.qlock);
+		bool lock_already_held = holding_spinlock(&ProcessQueues.qlock);
 
 		if (!lock_already_held)
 			acquire_spinlock(&ProcessQueues.qlock);
