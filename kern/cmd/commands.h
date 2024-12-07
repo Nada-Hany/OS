@@ -100,4 +100,8 @@ int command_tst(int number_of_arguments, char **arguments);
 int command_set_priority(int number_of_arguments, char **arguments);
 int command_set_starve_thresh(int number_of_arguments, char **arguments);
 
+//initialize priority RR sched command
+int command_schedPRIRR(int number_of_arguments, char **arguments);
+
+
 #endif /* KERN_CMD_COMMANDS_H_ */

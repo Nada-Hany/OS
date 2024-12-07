@@ -78,7 +78,11 @@ struct Command commands[] =
 		/* COMMANDS WITH THREE ARGUMENTS */
 		//********************************//
 		{ "rub", "reads block of bytes from specific location in given environment" ,command_readuserblock, 3},
+
 		//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - initialize command
+
+		{ "schedPRIRR", "switch and initialize the scheduler to priority RR with the give data" ,command_schedPRIRR ,3 },
+
 
 		//**************************************//
 		/* COMMANDS WITH AT LEAST ONE ARGUMENT */
@@ -89,6 +93,7 @@ struct Command commands[] =
 		{ "schedMLFQ", "switch the scheduler to MLFQ with given # queues & quantums", command_sch_MLFQ, -1},
 		{"load", "load a single user program to mem with status = NEW", commnad_load_env, -1},
 		{"tst", "run the given test", command_tst, -1},
+
 };
 
 //Number of commands = size of the array / size of command structure
@@ -96,6 +101,24 @@ uint32 NUM_OF_COMMANDS  = (sizeof(commands)/sizeof(struct Command));
 
 
 /***** Implementations of basic kernel command prompt commands *****/
+
+
+
+//initialize priority RR sched command
+int command_schedPRIRR(int number_of_arguments, char **arguments){
+
+	uint8 num_of_priority = strtol(arguments[1], NULL, 10);
+	uint8 quantum = strtol(arguments[2], NULL, 10);
+	uint32 starvThresh = strtol(arguments[3], NULL, 10);
+
+	cprintf("inside command_schedPRIRR with num of priority = %d  -- quantum = %d -- starvthres = %d \n", num_of_priority, quantum, starvThresh);
+
+	sched_init_PRIRR(num_of_priority, quantum, starvThresh);
+
+	return 0;
+}
+
+
 
 //print name and description of each command
 int command_help(int number_of_arguments, char **arguments)

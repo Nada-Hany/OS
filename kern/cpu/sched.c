@@ -249,14 +249,25 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - sched_init_PRIRR
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+//	panic("Not implemented yet");
 
+	cprintf("inside sched_init_PRIRR function \n");
 
+	num_of_ready_queues = numOfPriorities;
 
+	ProcessQueues.env_ready_queues = kmalloc(num_of_ready_queues * sizeof(struct Env_Queue));
+	for(int i=0; i<num_of_ready_queues; i++){
+		init_queue(&(ProcessQueues.env_ready_queues[i]));
+	}
 
+	quantums = kmalloc(sizeof(uint8)) ;
+	quantums[0] = quantum;
+	kclock_set_quantum(quantums[0]);
 
+	cprintf("1st quantum = %d -- with address = %x\n", quantums[0] ,quantums);
 
-
+	//+ assigning starvation threshold
+	// starv_thresh = starvThresh;
 
 
 	//=========================================
@@ -267,6 +278,8 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	scheduler_method = SCH_PRIRR;
 	//=========================================
 	//=========================================
+
+	cprintf("end of sched_init_PRIRR function \n");
 }
 
 //=========================
@@ -364,7 +377,31 @@ void clock_interrupt_handler(struct Trapframe* tf)
 		//TODO: [PROJECT'24.MS3 - #09] [3] PRIORITY RR Scheduler - clock_interrupt_handler
 		//Your code is here
 		//Comment the following line
-		panic("Not implemented yet");
+//		panic("Not implemented yet");
+
+		uint32 curernt_ticks = timer_ticks();
+		bool lock_already_held = holding_spinlock(&ProcessQueues.qlock);
+
+		if (!lock_already_held)
+			acquire_spinlock(&ProcessQueues.qlock);
+
+		for(int i=1; i<num_of_ready_queues; i++){
+			struct Env* env;
+			LIST_FOREACH(env, &ProcessQueues.env_ready_queues[i]){
+				int32 check = curernt_ticks - env->entered_ready_tick - starv_thresh;
+				// process passed starvation threshold and should be promoted
+				if(check >= 1){
+					sched_remove_ready(env);
+					env->priority -= 1;
+					env->entered_ready_tick = curernt_ticks;
+					sched_insert_ready(env);
+				}
+			}
+		}
+
+		if (!lock_already_held)
+			release_spinlock(&ProcessQueues.qlock);
+
 	}
 
 
