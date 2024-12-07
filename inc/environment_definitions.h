@@ -182,6 +182,9 @@ struct Env {
 	uint32 nPageIn, nPageOut, nNewPageAdded;
 	uint32 nClocks ;
 
+	// tick value which that process entered ready queue at
+	uint32 entered_ready_tick;
+
 };
 
 #define PRIORITY_LOW    		1
