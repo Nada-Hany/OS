@@ -251,7 +251,7 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//Comment the following line
 //	panic("Not implemented yet");
 
-	cprintf("inside sched_init_PRIRR function \n");
+	// cprintf("inside sched_init_PRIRR function \n");
 
 	num_of_ready_queues = numOfPriorities;
 
@@ -264,10 +264,10 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	quantums[0] = quantum;
 	kclock_set_quantum(quantums[0]);
 
-	cprintf("1st quantum = %d -- with address = %x\n", quantums[0] ,quantums);
+	// cprintf("1st quantum = %d -- with address = %x\n", quantums[0] ,quantums);
 
 	//+ assigning starvation threshold
-	// starv_thresh = starvThresh;
+	 starv_thresh = starvThresh;
 
 
 	//=========================================
@@ -279,7 +279,7 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//=========================================
 	//=========================================
 
-	cprintf("end of sched_init_PRIRR function \n");
+	// cprintf("end of sched_init_PRIRR function \n");
 }
 
 //=========================
