@@ -363,7 +363,25 @@ struct Env* fos_scheduler_PRIRR()
 	//TODO: [PROJECT'24.MS3 - #08] [3] PRIORITY RR Scheduler - fos_scheduler_PRIRR
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
+
+	struct Env *next_env = NULL;
+	struct Env *cur_env = get_cpu_proc();
+
+	if (cur_env != NULL){
+		enqueue(&(ProcessQueues.env_ready_queues[cur_env->priority]), cur_env);
+	}
+
+	for(int i=0;i<num_of_ready_queues;i++){
+		if (!LIST_EMPTY(&(ProcessQueues.env_ready_queues[i]))){
+			next_env = dequeue(&(ProcessQueues.env_ready_queues[i]));
+			break;
+		}
+	}
+
+	kclock_set_quantum(quantums[0]);
+
+	return next_env;
 }
 
 //========================================
