@@ -2,19 +2,21 @@
 
 #include "inc/lib.h"
 
-struct semaphore create_semaphore(char *semaphoreName, uint32 value)
-{
+struct semaphore create_semaphore(char *semaphoreName, uint32 value) {
 	//TODO: [PROJECT'24.MS3 - #02] [2] USER-LEVEL SEMAPHORE - create_semaphore
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("create_semaphore is not implemented yet");
 	//Your Code is Here...
-	struct __semdata* sem = (struct __semdata*)smalloc(semaphoreName, sizeof(struct __semdata), 1);
-	strcpy(sem->name,semaphoreName);
-	sem->count=value;
-	sem->lock=0;
-	LIST_INIT(&sem->queue);
+	struct __semdata* sem = (struct __semdata*) smalloc(semaphoreName,
+			sizeof(struct __semdata), 1);
+	strcpy(sem->name, semaphoreName);
+	sem->count = value;
+	sem->lock = 0;
+
+	sys_init_queue(&sem->queue);
+
 	struct semaphore semaphor;
-	semaphor.semdata=(struct __semdata*)sem;
+	semaphor.semdata = sem;
 
 	return semaphor;
 }
