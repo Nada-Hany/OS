@@ -36,12 +36,18 @@ struct semaphore get_semaphore(int32 ownerEnvID, char* semaphoreName)
 		return semaphor;
 }
 
-void wait_semaphore(struct semaphore sem)
-{
+void wait_semaphore(struct semaphore sem) {
 	//TODO: [PROJECT'24.MS3 - #04] [2] USER-LEVEL SEMAPHORE - wait_semaphore
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("wait_semaphore is not implemented yet");
+	//panic("wait_semaphore is not implemented yet");
 	//Your Code is Here...
+	while (xchg(&sem.semdata->lock, 1) != 0);
+
+	sem.semdata->count--;
+	if (sem.semdata->count < 0) {
+		sys_block_env_sem(&sem.semdata->queue, &sem.semdata->lock);
+	}
+	sem.semdata->lock=0;
 }
 
 void signal_semaphore(struct semaphore sem)
@@ -50,7 +56,6 @@ void signal_semaphore(struct semaphore sem)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("signal_semaphore is not implemented yet");
 	//Your Code is Here...
-//	dequeue(sem.semdata->queue);
 	uint32 key = 1;
 	do{
 		xchg(&sem.semdata->lock, key);

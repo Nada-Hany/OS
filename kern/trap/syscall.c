@@ -359,12 +359,21 @@ void sys_init_queue(uint32 queue_ptr){
 		init_queue(queue);
 	}
 }
-void sys_block_env_sem(uint32 queue_ptr){
+void sys_block_env_sem(uint32 queue_ptr, uint32 lock_ptr) {
 	struct Env_Queue* queue = (struct Env_Queue*) queue_ptr;
-	struct Env* env=get_cpu_proc();
-	if(queue!=NULL&&env!=NULL){
-		enqueue(queue,env);
+	uint32* lock = (uint32*) lock_ptr;
+
+	//acquire qlock
+	acquire_spinlock(&ProcessQueues.qlock);
+	//release semaphore lock
+	* lock = 0;
+
+	struct Env* env = get_cpu_proc();
+	if (queue != NULL && env != NULL) {
+		enqueue(queue, env);
 	}
+	sched_remove_ready(env);
+	env->env_status=ENV_BLOCKED;
 }
 
 void sys_release_env_sem(uint32 queue_ptr){
@@ -373,6 +382,8 @@ void sys_release_env_sem(uint32 queue_ptr){
 
 	if(queue!=NULL){
 		env=dequeue(queue);
+		cprintf("after dequeue %d\n",env->env_id);
+		env->env_status=ENV_READY;
 		sched_insert_ready(env);
 	}
 
@@ -556,7 +567,7 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		return 0;
 		break;
 	case SYS_block_env_sem:
-		sys_block_env_sem((uint32)a1);
+		sys_block_env_sem((uint32)a1,(uint32)a2);
 		return 0;
 		break;
 	case SYS_release_env_sem:
