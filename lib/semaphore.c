@@ -12,9 +12,10 @@ struct semaphore create_semaphore(char *semaphoreName, uint32 value)
 	strcpy(sem->name,semaphoreName);
 	sem->count=value;
 	sem->lock=0;
-	LIST_INIT(&sem->queue);
+
+	sys_init_queue(&sem->queue);
 	struct semaphore semaphor;
-	semaphor.semdata=(struct __semdata*)sem;
+	semaphor.semdata=sem;
 
 	return semaphor;
 }
