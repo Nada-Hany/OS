@@ -51,6 +51,15 @@ void signal_semaphore(struct semaphore sem)
 	//panic("signal_semaphore is not implemented yet");
 	//Your Code is Here...
 //	dequeue(sem.semdata->queue);
+	uint32 key = 1;
+	do{
+		xchg(&sem.semdata->lock, key);
+	}while(key!=0);
+	sem.semdata->count++;
+	if(sem.semdata->count>=0){
+		sys_release_env_sem(&sem.semdata->queue);
+	}
+	sem.semdata->lock=0;
 }
 
 int semaphore_count(struct semaphore sem)

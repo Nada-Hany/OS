@@ -373,6 +373,7 @@ void sys_release_env_sem(uint32 queue_ptr){
 
 	if(queue!=NULL){
 		env=dequeue(queue);
+		sched_insert_ready(env);
 	}
 
 }
