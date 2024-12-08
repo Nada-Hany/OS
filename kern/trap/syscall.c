@@ -359,7 +359,23 @@ void sys_init_queue(uint32 queue_ptr){
 		init_queue(queue);
 	}
 }
+void sys_block_env_sem(uint32 queue_ptr){
+	struct Env_Queue* queue = (struct Env_Queue*) queue_ptr;
+	struct Env* env=get_cpu_proc();
+	if(queue!=NULL&&env!=NULL){
+		enqueue(queue,env);
+	}
+}
 
+void sys_release_env_sem(uint32 queue_ptr){
+	struct Env_Queue* queue = (struct Env_Queue*) queue_ptr;
+	struct Env* env=NULL;
+
+	if(queue!=NULL){
+		env=dequeue(queue);
+	}
+
+}
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
 /*******************************/
@@ -536,6 +552,14 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		break;
 	case SYS_init_queue:
 		sys_init_queue((uint32) a1);
+		return 0;
+		break;
+	case SYS_block_env_sem:
+		sys_block_env_sem((uint32)a1);
+		return 0;
+		break;
+	case SYS_release_env_sem:
+		sys_release_env_sem((uint32)a1);
 		return 0;
 		break;
 	//======================================================================
