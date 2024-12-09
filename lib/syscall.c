@@ -323,8 +323,8 @@ void sys_env_set_priority(int32 envID, int priority){
 void sys_init_queue(struct Env_Queue* queue){
 	syscall(SYS_init_queue,(uint32)queue,0,0,0,0);
 }
-void sys_block_env_sem(struct Env_Queue* queue){
-	syscall(SYS_block_env_sem,(uint32)queue,0,0,0,0);
+void sys_block_env_sem(struct Env_Queue* queue,uint32* lock){
+	syscall(SYS_block_env_sem,(uint32)queue,(uint32)lock,0,0,0);
 }
 void sys_release_env_sem(struct Env_Queue* queue){
 	syscall(SYS_release_env_sem,(uint32)queue,0,0,0,0);
