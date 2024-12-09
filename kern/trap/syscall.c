@@ -367,18 +367,19 @@ void sys_block_env_sem(uint32 queue_ptr, uint32 lock_ptr) {
 	acquire_spinlock(&ProcessQueues.qlock);
 	//release semaphore lock
 	* lock = 0;
-	cprintf("released semaphore lock\n");
+
 	struct Env* env = get_cpu_proc();
 	if (queue != NULL && env != NULL) {
+
 		enqueue(queue, env);
 	}
 	//current process gets blocked some how
-//	sched_remove_ready(env);
+
 	env->env_status=ENV_BLOCKED;
-	cprintf("changed env status\n");
+
 	sched();
 	release_spinlock(&ProcessQueues.qlock);
-	cprintf("called sched\n");
+
 }
 
 void sys_release_env_sem(uint32 queue_ptr){
@@ -386,12 +387,12 @@ void sys_release_env_sem(uint32 queue_ptr){
 	struct Env* env=NULL;
 	acquire_spinlock(&ProcessQueues.qlock);
 	if(queue!=NULL){
-		cprintf("blocked queue size:%d", queue_size(queue));
+
 		env=dequeue(queue);
 		env->env_status=ENV_READY;
 		sched_insert_ready(env);
 	}
-//	release_spinlock(&ProcessQueues.qlock);
+	release_spinlock(&ProcessQueues.qlock);
 
 }
 /*******************************/

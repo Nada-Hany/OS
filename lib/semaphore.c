@@ -42,14 +42,14 @@ void wait_semaphore(struct semaphore sem) {
 	//panic("wait_semaphore is not implemented yet");
 	//Your Code is Here...
 	while (xchg(&sem.semdata->lock, 1) != 0);
-	cprintf("after aquiring semaphore lock\n");
+
 	sem.semdata->count--;
 	if (sem.semdata->count < 0) {
-		cprintf("will block this env\n");
+
 		sys_block_env_sem(&sem.semdata->queue, &sem.semdata->lock);
 	}
 	sem.semdata->lock=0;
-	cprintf("released semaphore lock\n");
+
 }
 
 void signal_semaphore(struct semaphore sem)
@@ -58,16 +58,16 @@ void signal_semaphore(struct semaphore sem)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("signal_semaphore is not implemented yet");
 	//Your Code is Here...
-	cprintf("will aquire semaphore lock in signal current lock value: %d\n", sem.semdata->lock);
+
 	while (xchg(&sem.semdata->lock, 1) != 0);
-	cprintf("aquired semaphore lock in signal\n");
+
 	sem.semdata->count++;
-	if(sem.semdata->count>=0){
-		cprintf("will put env in ready queue\n");
+	if(sem.semdata->count<=0){
+
 		sys_release_env_sem(&sem.semdata->queue);
 	}
 	sem.semdata->lock=0;
-	cprintf("released semaphore lock\n");
+
 }
 
 int semaphore_count(struct semaphore sem)
