@@ -237,8 +237,12 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 			if (e->page_last_WS_element == wse)
 			{
-				e->page_last_WS_element = LIST_NEXT(wse);
+			    if(wse == LIST_LAST(&(e->page_WS_list)))
+			    	e->page_last_WS_element = LIST_FIRST(&(e->page_WS_list));
+			    else
+			    	e->page_last_WS_element  = LIST_NEXT(wse);
 			}
+
 			LIST_REMOVE(&(e->page_WS_list), wse);
 
 			kfree(wse);
