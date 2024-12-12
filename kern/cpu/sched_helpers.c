@@ -708,7 +708,7 @@ void env_set_priority(int envID, int priority)
 	acquire_spinlock(&ProcessQueues.qlock);
 
 
-	if(priority >= num_of_ready_queues){
+	if(priority >= num_of_ready_queues || priority < 0){
 		release_spinlock(&ProcessQueues.qlock);
 		panic("invalid priority range\n");
 	}
