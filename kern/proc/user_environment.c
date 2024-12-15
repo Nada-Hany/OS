@@ -462,12 +462,54 @@ void env_start(void)
 void env_free(struct Env *e)
 {
 	/*REMOVE THIS LINE BEFORE START CODING*/
-	return;
+	//return;
 	/**************************************/
 
 	//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
 	// your code is here, remove the panic and write your code
-	panic("env_free() is not implemented yet...!!");
+	//panic("env_free() is not implemented yet...!!");
+	// [1] free pages in the page WS
+	// [2] free WS
+	struct WorkingSetElement* wse;
+	LIST_FOREACH(wse, &e->page_WS_list)
+	{
+		if (wse->virtual_address!=0)
+		{
+			uint32* ptr_page_table;
+			struct FrameInfo *ptr_frame_info = get_frame_info(e->env_page_directory, wse->virtual_address,&ptr_page_table);
+			if(ptr_frame_info!=0)
+			{
+				free_frame(ptr_frame_info);
+				unmap_frame(e->env_page_directory, wse->virtual_address);
+				pages_alloc_in_WS_list[(wse->virtual_address-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
+				pt_set_page_permissions(e->env_page_directory, wse->virtual_address,0,PERM_MARKED|PERM_PRESENT);
+				pf_remove_env_page(e,wse->virtual_address);
+			}
+		}
+		if(LIST_SIZE(&(e->page_WS_list)) == 1)
+			e->page_last_WS_element = NULL;
+		else if (e->page_last_WS_element == wse)
+		{
+			if(wse == LIST_LAST(&(e->page_WS_list)))
+				e->page_last_WS_element = LIST_FIRST(&(e->page_WS_list));
+			else
+				e->page_last_WS_element  = LIST_NEXT(wse);
+		}
+		LIST_REMOVE(&(e->page_WS_list), wse);
+		kfree(wse);
+	}
+
+	// [3] free shared objects
+
+	// [4] free semaphores
+
+	// [5] free page tables
+
+	// [6] free Directory table
+	kfree(e->env_page_directory);
+
+	// [7] free User kernel stack
+	//kfree(e->kstack);
 
 
 	// [9] remove this program from the page file
