@@ -290,15 +290,14 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		    }
 			struct WorkingSetElement* working_set_element = env_page_ws_list_create_element(faulted_env, fault_va);
 			pages_alloc_in_WS_list[(fault_va-(faulted_env->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=working_set_element;
-			LIST_INSERT_TAIL(&(faulted_env->page_WS_list), working_set_element);
-			if (LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
+			if(faulted_env->page_last_WS_element == NULL)
 			{
-				faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+				LIST_INSERT_TAIL(&(faulted_env->page_WS_list), working_set_element);
+				if (LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
+				     faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
 			}
 			else
-			{
-				faulted_env->page_last_WS_element = NULL;
-			}
+			   LIST_INSERT_BEFORE(&(faulted_env->page_WS_list), faulted_env->page_last_WS_element, working_set_element);
 		}
 		else
 		{
