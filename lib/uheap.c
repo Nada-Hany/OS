@@ -16,97 +16,23 @@ void* sbrk(int increment)
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
 uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
-bool page_marked[NUM_OF_UHEAP_PAGES] = {0};
 uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
 
 int get_page_index(uint32 va)
 {
 	return (va - (myEnv->env_rLimit + PAGE_SIZE)) / PAGE_SIZE;
 }
-
-void mark_pages(uint32 start_va, uint32 size)
-{
-	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-	while(num_of_pages--)
-	{
-		uint32 page_index = get_page_index(start_va);
-		page_marked[page_index] = 1;
-		start_va += PAGE_SIZE;
-	}
-}
-void unmark_pages(uint32 start_va, uint32 size)
-{
-	int num_of_pages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-	while(num_of_pages--)
-	{
-		uint32 page_index = get_page_index(start_va);
-		page_marked[page_index] = 0;
-		start_va += PAGE_SIZE;
-	}
-}
-
 int num_of_unmapped_pages(uint32 start_va)
 {
 	int num = 0;
 	uint32 page_index = get_page_index(start_va);
-	while(start_va < USER_HEAP_MAX && !(page_marked[page_index]))
+	while(start_va < USER_HEAP_MAX && (virtual_addresses_pages_num[page_index]==0))
 	{
 		num = num + 1;
 		start_va = start_va + PAGE_SIZE;
 		page_index = get_page_index(start_va);
 	}
 	return num;
-}
-void* malloc(uint32 size)
-{
-	//==============================================================
-	//DON'T CHANGE THIS CODE========================================
-	if (size == 0) return NULL ;
-	//==============================================================
-	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
-	// Write your code here, remove the panic and write your code
-	//panic("malloc() is not implemented yet...!!");
-	//return NULL;
-	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
-	//to check the current strategy
-	if(sys_isUHeapPlacementStrategyFIRSTFIT())
-	{
-		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
-		{
-			return alloc_block_FF(size);
-	    }
-		else
-		{
-			uint32 start_va = myEnv->env_rLimit + PAGE_SIZE;
-			uint32 final_va = 0;
-			while(start_va < USER_HEAP_MAX)
-			{
-				uint32 page_index = get_page_index(start_va);
-				if(page_marked[page_index])
-				{
-					start_va += PAGE_SIZE;
-					continue;
-				}
-
-				int consecutive_free_pages = num_of_unmapped_pages(start_va);
-				if(consecutive_free_pages*PAGE_SIZE >= size)
-				{
-					final_va = start_va;
-					break;
-				}
-
-				start_va += (consecutive_free_pages*PAGE_SIZE);
-			}
-			if(final_va==0)
-				return NULL;
-
-			mark_pages(final_va, size);
-			sys_allocate_user_mem(final_va, size);
-			virtual_addresses_pages_num[get_page_index(final_va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-			return (void *) final_va;
-		}
-	}
-	return (void *) -1;
 }
 
 uint32 FirstFit(uint32 start_va,uint32 size) {
@@ -129,23 +55,52 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 		uint32 page_index = get_page_index(start_va);
 
 		// If the current page is allocated, skip it
-		if (page_marked[page_index]) {
+		if (virtual_addresses_pages_num[page_index]!=0) {
 
-			start_va += PAGE_SIZE;
+			start_va += virtual_addresses_pages_num[page_index] * PAGE_SIZE;
 			continue;
 		}
 
 		int consecutive_free_pages = num_of_unmapped_pages(start_va);
 		if (consecutive_free_pages >= num_of_pages) {
 			final_va = start_va;
-
 			break;
 		}
 		// go to next block of free pages
 		start_va += (consecutive_free_pages * PAGE_SIZE);
 	}
-
 	return final_va;
+}
+void* malloc(uint32 size)
+{
+	//==============================================================
+	//DON'T CHANGE THIS CODE========================================
+	if (size == 0) return NULL ;
+	//==============================================================
+	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
+	// Write your code here, remove the panic and write your code
+	//panic("malloc() is not implemented yet...!!");
+	//return NULL;
+	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
+	//to check the current strategy
+	if(sys_isUHeapPlacementStrategyFIRSTFIT())
+	{
+		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		{
+			return alloc_block_FF(size);
+	    }
+		else
+		{
+			uint32 start_va = myEnv->env_rLimit + PAGE_SIZE;
+			uint32 final_va = FirstFit(start_va, size);
+			if(final_va==0)
+				return NULL;
+			sys_allocate_user_mem(final_va, size);
+			virtual_addresses_pages_num[get_page_index(final_va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+			return (void *) final_va;
+		}
+	}
+	return (void *) -1;
 }
 //=================================
 // [3] FREE SPACE FROM USER HEAP:
@@ -161,7 +116,6 @@ void free(void* virtual_address)
 		free_block(virtual_address);
 	}else if(va>=myEnv->env_rLimit+PAGE_SIZE && va<USER_HEAP_MAX){
 		int num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
-		unmark_pages(va,num_of_pages*PAGE_SIZE);
 		sys_free_user_mem(va,virtual_addresses_pages_num[get_page_index(va)]*PAGE_SIZE);
 		virtual_addresses_pages_num[get_page_index(va)]=0;
 	}else{
@@ -194,15 +148,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	if(check == E_SHARED_MEM_EXISTS || check == E_NO_SHARE)
 		return NULL;
 
-	int numberOfFrames = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-	// marking allocated pages as marked to be skipped
-	uint32 tmp = va;
-	while(numberOfFrames){
-		int ind = get_page_index(tmp);
-		page_marked[ind] = 1;
-		tmp += PAGE_SIZE;
-		numberOfFrames--;
-	}
+	virtual_addresses_pages_num[get_page_index(va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 
 	slave_to_master[get_page_index(va)]=va;
 
@@ -239,15 +185,8 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 
 	    slave_to_master[get_page_index(va)]=ret;
 
-	int numberOfPages = (size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	    virtual_addresses_pages_num[get_page_index(va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
 
-	uint32 tmp = va;
-	while(numberOfPages){
-		int ind = get_page_index(tmp);
-		page_marked[ind] = 1;
-		tmp += PAGE_SIZE;
-		numberOfPages--;
-	}
 
 	return (void*)va;
 }
@@ -275,6 +214,9 @@ void sfree(void* virtual_address)
 //	panic("sfree() is not implemented yet...!!");
 	uint32 Id = slave_to_master[get_page_index((uint32)virtual_address)] & 0x7FFFFFFF;
 	sys_freeSharedObject(Id, virtual_address);
+	uint32 va = (uint32)virtual_address;
+	virtual_addresses_pages_num[get_page_index(va)]=0;
+
 }
 
 

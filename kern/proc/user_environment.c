@@ -19,7 +19,7 @@
 #include "../mem/kheap.h"
 #include "../mem/memory_manager.h"
 #include "../mem/shared_memory_manager.h"
-
+#include <kern/mem/kheap.h>
 
 /******************************/
 /* DATA & DECLARATIONS */
@@ -484,6 +484,7 @@ void env_free(struct Env *e)
 				pages_alloc_in_WS_list[(wse->virtual_address-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
 				pt_set_page_permissions(e->env_page_directory, wse->virtual_address,0,PERM_MARKED|PERM_PRESENT);
 				pf_remove_env_page(e,wse->virtual_address);
+				pd_clear_page_dir_entry(e->env_page_directory, wse->virtual_address);
 			}
 		}
 		if(LIST_SIZE(&(e->page_WS_list)) == 1)
@@ -498,19 +499,25 @@ void env_free(struct Env *e)
 		LIST_REMOVE(&(e->page_WS_list), wse);
 		kfree(wse);
 	}
-
 	// [3] free shared objects
 
 	// [4] free semaphores
 
 	// [5] free page tables
-
+	for (int i=0; i<PDX(USER_TOP); i++)
+	{
+		uint32 page_directory_entry = e->env_page_directory[i];
+		if ((page_directory_entry & PERM_PRESENT) == PERM_PRESENT)
+		{
+			uint32 ptr_page_table = kheap_virtual_address(EXTRACT_ADDRESS(page_directory_entry));
+			kfree((void *)ptr_page_table);
+		}
+	}
 	// [6] free Directory table
 	kfree(e->env_page_directory);
 
 	// [7] free User kernel stack
 	//kfree(e->kstack);
-
 
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
@@ -531,6 +538,7 @@ void env_exit(void)
 {
 	struct Env* cur_env = get_cpu_proc();
 	assert(cur_env != NULL);
+	env_free(cur_env);
 	sched_exit_env(cur_env->env_id);
 	//2024: Replaced by context switch
 	//fos_scheduler();
