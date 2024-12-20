@@ -457,8 +457,37 @@ void env_start(void)
 //===============================
 // 3) FREE ENV FROM THE SYSTEM:
 //===============================
+
+// return -1 if not a shared object
+// return 0 if shared object but no other proc referencing it
+// return 1 if shared and proc referencing it
+struct Share* isSharedObj(struct Env * env, int *checkVal){
+	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+	if (!lock_already_held)
+		acquire_spinlock(&AllShares.shareslock);
+
+	struct Share* sharedObj = NULL;
+	LIST_FOREACH(sharedObj, &AllShares.shares_list){
+		if(sharedObj->ownerID == env->env_id)
+			break;
+	}
+	if (!lock_already_held)
+		release_spinlock(&AllShares.shareslock);
+
+	if(sharedObj == NULL){
+		*checkVal = -1;
+		return NULL;
+	}
+	uint32 referencesNumber = sharedObj->references - 1;
+	if(referencesNumber == 0){
+		*checkVal = 0;
+		return sharedObj;
+	}
+	*checkVal = 1;
+	return sharedObj;
+}
+
 // Frees environment "e" and all memory it uses.
-//
 void env_free(struct Env *e)
 {
 	/*REMOVE THIS LINE BEFORE START CODING*/
@@ -500,6 +529,25 @@ void env_free(struct Env *e)
 	}
 
 	// [3] free shared objects
+	int hasReferences;
+	struct Share* sharedObj = isSharedObj(e, &hasReferences);
+	if(sharedObj!=NULL){
+		if(hasReferences == 0){
+			//which start va that should be passed to free shared obj?
+			freeSharedObject(sharedObj->ID, sharedObj->va);
+		}else{
+			uint32 numberOfReferences = sharedObj->references - 1;
+			// get each env that called sget in this env and free its frames [need its va]
+			for(int i=0; i<numberOfReferences; i++){
+				struct Env* referencedEnv;
+				int check = envid2env(*sharedObj->refrenced_ids[i], &referencedEnv, (bool)0);
+				// unmap referencedEnv frames
+				if(check == 0){
+
+				}
+			}
+		}
+	}
 
 	// [4] free semaphores
 

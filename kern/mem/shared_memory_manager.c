@@ -176,7 +176,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 	struct Env* myenv = get_cpu_proc(); //The calling environment
-
+	cprintf("SMALLOC: name = %s -- id = %d \n", shareName, myenv->env_id);
 	//search if obj is already exist
 	if (get_share(ownerID, shareName) != NULL) {
 		return E_SHARED_MEM_EXISTS;
@@ -221,8 +221,47 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 		index_of_framesStorage++;
 	}
 	shared_obj->ID=(uint32)virtual_address& 0x7FFFFFFF;
+
+	// ----------------
+	shared_obj->refrenced_ids = NULL;
+	shared_obj->va = virtual_address;
+
 	return shared_obj->ID;
 }
+
+//=========================
+void printReferencedIds(struct Share *sharedObj){
+		cprintf("==============================================\n");
+		cprintf("sget called on shared object with id = %d and refrences = %d , name = %s \n",sharedObj->ownerID, sharedObj->references, sharedObj->name);
+		uint32 referencesNumber = sharedObj->references - 1;
+		for(int i=0; i<referencesNumber; i++)
+			cprintf("sget called with id = %d \n",sharedObj->refrenced_ids[i]);
+}
+
+void adjustReferences(struct Share* sharedObj, int32 referenced_id){
+
+	// ignore the reference of the env that created shared object
+	int32 referencesNumber = sharedObj->references - 1;
+//	cprintf("ADJUST REFERENCES: got called with number of references = %d using proc id = %d\n", referencesNumber, referenced_id);
+	// there's previous references need to store their values
+	if(referencesNumber != 1){
+		int32* prevIds[referencesNumber-1];
+		for(int i=0; i<referencesNumber-1; i++)
+			prevIds[i] = sharedObj->refrenced_ids[i];
+
+		sharedObj->refrenced_ids = (int32 **)krealloc(sharedObj->refrenced_ids, referencesNumber*sizeof(uint32));
+		for(int i=0; i<referencesNumber-1; i++)
+			sharedObj->refrenced_ids[i] = prevIds[i];
+		sharedObj->refrenced_ids[referencesNumber] = (int32 *)referenced_id;
+
+	}else{
+		sharedObj->refrenced_ids = (int32 **)kmalloc(referencesNumber*sizeof(int32));
+		sharedObj->refrenced_ids[0] = (int32 *)referenced_id;
+	}
+//	printReferencedIds(sharedObj);
+
+}
+
 
 
 //======================
@@ -244,8 +283,8 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 	if(my_shared_object==NULL){
 		if (!lock_already_held) {
-						release_spinlock(&AllShares.shareslock);
-			}
+			release_spinlock(&AllShares.shareslock);
+		}
 		return E_SHARED_MEM_NOT_EXISTS;
 
 	}
@@ -268,6 +307,11 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 	}
 	my_shared_object->references = my_shared_object->references + 1;
+
+	// save id of the called process
+	adjustReferences(my_shared_object, myenv->env_id);
+
+
 	if (!lock_already_held) {
 		release_spinlock(&AllShares.shareslock);
 	}

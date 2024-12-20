@@ -31,6 +31,12 @@ struct Share
 	//to store frames to be shared
 	struct FrameInfo** framesStorage;
 
+	// =============
+	// for storing all ids the referenced this shared obj
+	int32 **refrenced_ids;
+	void* va;
+
+
 	// list link pointers
 	LIST_ENTRY(Share) prev_next_info;
 
