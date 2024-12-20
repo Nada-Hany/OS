@@ -19,7 +19,7 @@
 #include "../mem/kheap.h"
 #include "../mem/memory_manager.h"
 #include "../mem/shared_memory_manager.h"
-
+//#include "../../lib/uheap.c"
 
 /******************************/
 /* DATA & DECLARATIONS */
@@ -470,6 +470,7 @@ void env_free(struct Env *e)
 	//panic("env_free() is not implemented yet...!!");
 	// [1] free pages in the page WS
 	// [2] free WS
+	cprintf("before deleting ws\n");
 	struct WorkingSetElement* wse;
 	LIST_FOREACH(wse, &e->page_WS_list)
 	{
@@ -498,18 +499,41 @@ void env_free(struct Env *e)
 		LIST_REMOVE(&(e->page_WS_list), wse);
 		kfree(wse);
 	}
-
+	cprintf("after deleting ws\n");
 	// [3] free shared objects
-
 	// [4] free semaphores
-
+	uint32 * page_dir = e->env_page_directory;
+		for(int i=0;i<(1<<10);i++){
+			uint32* pt_ptr;
+			get_page_table(e->env_page_directory, i<<12, &pt_ptr);
+			cprintf("pt %d\n", i);
+			if(pt_ptr!=0){
+				for(int j=0;j<(1<<10);j++){
+					if(pt_ptr[j]!=0){
+						cprintf("page %d\n", j);
+						uint32 page = kheap_virtual_address(EXTRACT_ADDRESS(pt_ptr[j]));
+						freeSharedObject(page, (void*)page);
+//						cprintf("returned %d from freeshared\n", ret);
+					}
+				}
+			}
+		}
+		cprintf("after 4\n");
 	// [5] free page tables
 
+	for(int i=0;i<(1<<10);i++){
+
+		uint32* pt_ptr;
+		get_page_table(e->env_page_directory, i<<12, &pt_ptr);
+		if(pt_ptr != 0)
+			kfree((void*)pt_ptr);
+	}
+	cprintf("after 5\n");
 	// [6] free Directory table
 	kfree(e->env_page_directory);
 
 	// [7] free User kernel stack
-	//kfree(e->kstack);
+	kfree(e->kstack);
 
 
 	// [9] remove this program from the page file
