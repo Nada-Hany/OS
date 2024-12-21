@@ -11,7 +11,7 @@
 // Return:
 //	On success: 0
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
-struct sleeplock pages_lock_sleep;
+struct spinlock pages_lock_sleep;
 // struct spinlock pages_lock_spin;
 uint32 virtual_addresses[1 << 20];
 uint32 virtual_addresses_pages_num[NUM_OF_KHEAP_PAGES];
@@ -33,7 +33,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	memset(virtual_addresses, 0, sizeof(virtual_addresses));
 	// init lock
 	//	init_spinlock(&pages_lock_spin,"pages lock");
-	init_sleeplock(&pages_lock_sleep, "pages lock sleep");
+	init_spinlock(&pages_lock_sleep, "pages lock sleep");
 
 	if (segBreak > rLimit)
 		panic("initial size exceeds the given limit");
@@ -113,7 +113,7 @@ void *sbrk(int numOfPages)
 			va = va + PAGE_SIZE;
 		}
 	}
-
+	cprintf("\n kernel sbrk called with number of pages = %d \n", numOfPages);
 	return (void *)previous_segBreak;
 	// MS2: COMMENT THIS LINE BEFORE START CODING==========
 	// return (void*)-1 ;
@@ -197,11 +197,11 @@ void *kmalloc(unsigned int size)
 	//	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-	bool lock_already_held = holding_sleeplock(&pages_lock_sleep);
+	bool lock_already_held = holding_spinlock(&pages_lock_sleep);
 
 	if (!lock_already_held)
 	{
-		acquire_sleeplock(&pages_lock_sleep);
+		acquire_spinlock(&pages_lock_sleep);
 	}
 	if (isKHeapPlacementStrategyFIRSTFIT())
 	{
@@ -212,7 +212,7 @@ void *kmalloc(unsigned int size)
 
 			if (!lock_already_held)
 			{
-				release_sleeplock(&pages_lock_sleep);
+				release_spinlock(&pages_lock_sleep);
 			}
 			return ans;
 		}
@@ -244,7 +244,7 @@ void *kmalloc(unsigned int size)
 			{
 				if (!lock_already_held)
 				{
-					release_sleeplock(&pages_lock_sleep);
+					release_spinlock(&pages_lock_sleep);
 				}
 				return NULL;
 			}
@@ -253,14 +253,14 @@ void *kmalloc(unsigned int size)
 			// cprintf(" va : %d,    va of allocated in alloc %d\n",actual_start,virtual_addresses_pages_num[va>>12]);
 			if (!lock_already_held)
 			{
-				release_sleeplock(&pages_lock_sleep);
+				release_spinlock(&pages_lock_sleep);
 			}
 			return (void *)actual_start;
 		}
 	}
 	if (!lock_already_held)
 	{
-		release_sleeplock(&pages_lock_sleep);
+		release_spinlock(&pages_lock_sleep);
 	}
 	return (void *)-1;
 }
@@ -323,11 +323,11 @@ void kfree(void *virtual_address)
 	//	if (!lock_already_held) {
 	//		acquire_spinlock(&pages_lock_spin);
 	//	}
-	bool lock_already_held = holding_sleeplock(&pages_lock_sleep);
+	bool lock_already_held = holding_spinlock(&pages_lock_sleep);
 
 	if (!lock_already_held)
 	{
-		acquire_sleeplock(&pages_lock_sleep);
+		acquire_spinlock(&pages_lock_sleep);
 	}
 	if (va < segBreak && va < rLimit)
 	{
@@ -364,7 +364,7 @@ void kfree(void *virtual_address)
 	}
 	if (!lock_already_held)
 	{
-		release_sleeplock(&pages_lock_sleep);
+		release_spinlock(&pages_lock_sleep);
 	}
 	//	if (!lock_already_held) {
 	//		release_spinlock(&pages_lock_spin);

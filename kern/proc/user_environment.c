@@ -458,77 +458,96 @@ void env_start(void)
 // 3) FREE ENV FROM THE SYSTEM:
 //===============================
 // Frees environment "e" and all memory it uses.
-//
-void env_free(struct Env *e)
-{
-	/*REMOVE THIS LINE BEFORE START CODING*/
-	//return;
-	/**************************************/
-
-	//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
-	// your code is here, remove the panic and write your code
-	//panic("env_free() is not implemented yet...!!");
-	// [1] free pages in the page WS
-	// [2] free WS
-	struct WorkingSetElement* wse;
-	LIST_FOREACH(wse, &e->page_WS_list)
+	//
+	void env_free(struct Env *e)
 	{
-		if (wse->virtual_address!=0)
+		/*REMOVE THIS LINE BEFORE START CODING*/
+		//return;
+		/**************************************/
+
+		//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
+		// your code is here, remove the panic and write your code
+		//panic("env_free() is not implemented yet...!!");
+		// [1] free pages in the page WS
+		// [2] free WS
+		struct WorkingSetElement* wse;
+		LIST_FOREACH(wse, &e->page_WS_list)
 		{
-			uint32* ptr_page_table;
-			struct FrameInfo *ptr_frame_info = get_frame_info(e->env_page_directory, wse->virtual_address,&ptr_page_table);
-			if(ptr_frame_info!=0)
+			if (wse->virtual_address!=0)
 			{
-				free_frame(ptr_frame_info);
-				unmap_frame(e->env_page_directory, wse->virtual_address);
-				pages_alloc_in_WS_list[(wse->virtual_address-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
-				pt_set_page_permissions(e->env_page_directory, wse->virtual_address,0,PERM_MARKED|PERM_PRESENT);
-				pf_remove_env_page(e,wse->virtual_address);
-				pd_clear_page_dir_entry(e->env_page_directory, wse->virtual_address);
+				uint32* ptr_page_table;
+				struct FrameInfo *ptr_frame_info = get_frame_info(e->env_page_directory, wse->virtual_address,&ptr_page_table);
+				if(ptr_frame_info!=0)
+				{
+					free_frame(ptr_frame_info);
+					unmap_frame(e->env_page_directory, wse->virtual_address);
+					pages_alloc_in_WS_list[(wse->virtual_address-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
+					pt_set_page_permissions(e->env_page_directory, wse->virtual_address,0,PERM_MARKED|PERM_PRESENT);
+					pf_remove_env_page(e,wse->virtual_address);
+					pd_clear_page_dir_entry(e->env_page_directory, wse->virtual_address);
+				}
+			}
+			if(LIST_SIZE(&(e->page_WS_list)) == 1)
+				e->page_last_WS_element = NULL;
+			else if (e->page_last_WS_element == wse)
+			{
+				if(wse == LIST_LAST(&(e->page_WS_list)))
+					e->page_last_WS_element = LIST_FIRST(&(e->page_WS_list));
+				else
+					e->page_last_WS_element  = LIST_NEXT(wse);
+			}
+			LIST_REMOVE(&(e->page_WS_list), wse);
+			kfree(wse);
+		}
+		// [3] free shared objects
+		uint32 * page_dir = e->env_page_directory;
+		for(int i=0;i<(1<<10);i++){
+			uint32* pt_ptr;
+			get_page_table(e->env_page_directory, i<<12, &pt_ptr);
+//			cprintf("pt %d\n", i);
+			if(pt_ptr!=0){
+				for(int j=0;j<(1<<10);j++){
+					if(pt_ptr[j]!=0){
+//						cprintf("page %d\n", j);
+						uint32 page = kheap_virtual_address(EXTRACT_ADDRESS(pt_ptr[j]));
+						freeSharedObject(page, (void*)page);
+//						cprintf("returned %d from freeshared\n", ret);
+					}
+				}
 			}
 		}
-		if(LIST_SIZE(&(e->page_WS_list)) == 1)
-			e->page_last_WS_element = NULL;
-		else if (e->page_last_WS_element == wse)
+		cprintf("after 4\n");
+		// [4] free semaphores
+
+		// [5] free page tables
+		for (int i=0; i<PDX(USER_TOP); i++)
 		{
-			if(wse == LIST_LAST(&(e->page_WS_list)))
-				e->page_last_WS_element = LIST_FIRST(&(e->page_WS_list));
-			else
-				e->page_last_WS_element  = LIST_NEXT(wse);
+			uint32 page_directory_entry = e->env_page_directory[i];
+			if ((page_directory_entry & PERM_PRESENT) == PERM_PRESENT)
+			{
+				uint32 ptr_page_table = kheap_virtual_address(EXTRACT_ADDRESS(page_directory_entry));
+
+				kfree((void *)ptr_page_table);
+			}
 		}
-		LIST_REMOVE(&(e->page_WS_list), wse);
-		kfree(wse);
+
+		// [6] free Directory table
+		kfree(e->env_page_directory);
+
+		// [7] free User kernel stack
+		kfree(e->kstack);
+
+		// [9] remove this program from the page file
+		/*(ALREADY DONE for you)*/
+		pf_free_env(e); /*(ALREADY DONE for you)*/ // (removes all of the program pages from the page file)
+		/*========================*/
+
+		// [10] free the environment (return it back to the free environment list)
+		/*(ALREADY DONE for you)*/
+		free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
+		/*========================*/
+		cprintf("\n\n==================================================\n\n");
 	}
-	// [3] free shared objects
-
-	// [4] free semaphores
-
-	// [5] free page tables
-	for (int i=0; i<PDX(USER_TOP); i++)
-	{
-		uint32 page_directory_entry = e->env_page_directory[i];
-		if ((page_directory_entry & PERM_PRESENT) == PERM_PRESENT)
-		{
-			uint32 ptr_page_table = kheap_virtual_address(EXTRACT_ADDRESS(page_directory_entry));
-			kfree((void *)ptr_page_table);
-		}
-	}
-	// [6] free Directory table
-	kfree(e->env_page_directory);
-
-	// [7] free User kernel stack
-	//kfree(e->kstack);
-
-	// [9] remove this program from the page file
-	/*(ALREADY DONE for you)*/
-	pf_free_env(e); /*(ALREADY DONE for you)*/ // (removes all of the program pages from the page file)
-	/*========================*/
-
-	// [10] free the environment (return it back to the free environment list)
-	/*(ALREADY DONE for you)*/
-	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
-	/*========================*/
-}
 
 //============================
 // 4) PLACE ENV IN EXIT QUEUE:
@@ -654,7 +673,7 @@ void sched(void)
 	int intena;
 	struct Env *p = get_cpu_proc();
 	assert(p != NULL);
-
+	cprintf("IN SCHED FUNCTION \n");
 	/*To protect process Qs (or info of current process) in multi-CPU*/
 	if(!holding_spinlock(&ProcessQueues.qlock))
 		panic("sched: q.lock is not held by this CPU while it's expected to be. ");
