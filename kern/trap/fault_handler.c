@@ -244,19 +244,24 @@ void replace(struct Env * faulted_env, uint32 fault_va, struct WorkingSetElement
         struct FrameInfo *ptr_frame_info = get_frame_info(faulted_env->env_page_directory, victimWSElement->virtual_address, &page_table_ptr);
         pf_update_env_page(faulted_env, victimWSElement->virtual_address, ptr_frame_info);
     }
+
     pages_alloc_in_WS_list[(victimWSElement->virtual_address - (faulted_env->env_rLimit + PAGE_SIZE)) / PAGE_SIZE] = NULL;
     pages_alloc_in_WS_list[(fault_va - (faulted_env->env_rLimit + PAGE_SIZE)) / PAGE_SIZE] = victimWSElement;
+
     if(victimWSElement == LIST_LAST(&(faulted_env->page_WS_list)))
     	faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
     else
         faulted_env->page_last_WS_element = LIST_NEXT(victimWSElement);
+
     uint32 *ptr_page_table;
     struct FrameInfo *ptr_new_frame = get_frame_info(faulted_env->env_page_directory, victimWSElement->virtual_address, &ptr_page_table);
     map_frame(faulted_env->env_page_directory, ptr_new_frame,  fault_va, PERM_USER | PERM_WRITEABLE);
     unmap_frame(faulted_env->env_page_directory, victimWSElement->virtual_address);
-    pt_set_page_permissions(faulted_env->env_page_directory, victimWSElement->virtual_address, 0, PERM_USED|PERM_PRESENT|PERM_MARKED);
+    pt_set_page_permissions(faulted_env->env_page_directory, victimWSElement->virtual_address, PERM_MARKED, PERM_USED|PERM_PRESENT|PERM_MODIFIED);
+
     victimWSElement->virtual_address = fault_va;
     victimWSElement->sweeps_counter = 0;
+
     int pagefile_exists = pf_read_env_page(faulted_env, (void*)victimWSElement->virtual_address);
     if (pagefile_exists == E_PAGE_NOT_EXIST_IN_PF && !(is_stack_or_heap_page(fault_va)))
     {
