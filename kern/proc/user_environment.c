@@ -457,6 +457,43 @@ void env_start(void)
 //===============================
 // 3) FREE ENV FROM THE SYSTEM:
 //===============================
+void checkReferences(struct Share* obj)
+{
+    struct Share *sharedObj = NULL;
+    LIST_FOREACH(sharedObj, &AllShares.shares_list)
+    {
+        if (sharedObj->ID == obj->ID)
+            break;
+    }
+    if (sharedObj == NULL)
+        return;
+    if (obj->references == 0)
+    {
+        if (!holding_spinlock(&AllShares.shareslock))
+            acquire_spinlock(&AllShares.shareslock);
+        LIST_REMOVE(&AllShares.shares_list, obj);
+        if (!holding_spinlock(&AllShares.shareslock))
+            release_spinlock(&AllShares.shareslock);
+        kfree((void *)obj->framesStorage);
+        kfree((void*)obj);
+    }
+}
+
+void freePages(struct Env *e, int pages, void *startVa)
+{
+    uint32 va = (uint32)startVa;
+    while (pages)
+    {
+        uint32 *ptr_page_table = NULL;
+        struct FrameInfo *ptr_frame = get_frame_info(e->env_page_directory, va, &ptr_page_table);
+        free_frame(ptr_frame);
+        unmap_frame(e->env_page_directory, va);
+
+        va = va + PAGE_SIZE;
+        pages--;
+    }
+}
+
 // Frees environment "e" and all memory it uses.
 	//
 	void env_free(struct Env *e)
@@ -500,7 +537,49 @@ void env_start(void)
 		}
 		// [3] free shared objects
 		// [4] free semaphores
+		// [3] free shared objects
+		    // [4] free semaphores
+		    int foundShared = 0;
+		    struct Share *sharedObj = NULL;
+		    if (!holding_spinlock(&AllShares.shareslock))
+		        acquire_spinlock(&AllShares.shareslock);
 
+		    LIST_FOREACH(sharedObj, &AllShares.shares_list)
+		    {
+		        if (e->shared_object_no > 0)
+		        {
+		            for (int i = 0; i < e->shared_object_no; i++)
+		            {
+		                if (sharedObj->ID == ((int32)e->startVAs[i] & 0x7FFFFFFF))
+		                {
+		                    foundShared = 1;
+		                    int pages = ROUNDUP(sharedObj->size, PAGE_SIZE) / PAGE_SIZE;
+		                    freePages(e, pages, e->startVAs[i]);
+		                    sharedObj->references -= 1;
+		                    checkReferences(sharedObj);
+		                }
+		            }
+		        }
+		    }
+		    if (!holding_spinlock(&AllShares.shareslock))
+		        release_spinlock(&AllShares.shareslock);
+
+		    if (!foundShared)
+		    {
+		        struct Share *sharedObj = NULL;
+		        LIST_FOREACH(sharedObj, &AllShares.shares_list)
+		        {
+		            for (int i = 0; i < sharedObj->refCounter; i++)
+		            {
+		                if ((int32)sharedObj->referenced_ids[i] == e->env_id)
+		                {
+		                    sharedObj->references -= 1;
+		                    checkReferences(sharedObj);
+		                    break;
+		                }
+		            }
+		        }
+		    }
 		// [5] free page tables
 		for (int i=0; i<PDX(USER_TOP); i++)
 		{

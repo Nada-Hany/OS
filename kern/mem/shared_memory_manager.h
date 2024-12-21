@@ -34,6 +34,9 @@ struct Share
 	// list link pointers
 	LIST_ENTRY(Share) prev_next_info;
 
+	int32 **referenced_ids;
+	    int refCounter;
+
 };
 
 //List of all shared objects

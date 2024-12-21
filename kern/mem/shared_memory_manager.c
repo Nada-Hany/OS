@@ -221,6 +221,29 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 		index_of_framesStorage++;
 	}
 	shared_obj->ID=(uint32)virtual_address& 0x7FFFFFFF;
+	// ---------- for free env
+	    myenv->shared_object_no+=1; //env created a shared obj
+
+	    if(myenv->shared_object_no == 1){
+	        myenv->startVAs = (uint32** )kmalloc(sizeof(int));
+	        myenv->startVAs[0] = (uint32 *)virtual_address;
+	    }else{
+	        uint32 *prevVAs[myenv->shared_object_no-1];
+	        for(int i=0; i<myenv->shared_object_no-1; i++)
+	            prevVAs[i] = myenv->startVAs[i];
+
+	            myenv->startVAs = (uint32 **)krealloc(myenv->startVAs, myenv->shared_object_no*sizeof(uint32));
+
+	            for(int i=0; i<myenv->shared_object_no-1; i++)
+	                myenv->startVAs[i] = prevVAs[i];
+
+	            myenv->startVAs[myenv->shared_object_no - 1] = (uint32*)virtual_address;
+
+	    }
+
+
+	    shared_obj->referenced_ids = NULL;
+	    shared_obj->refCounter = 0;
 	return shared_obj->ID;
 }
 
@@ -228,6 +251,32 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size,
 //======================
 // [5] Get Share Object:
 //======================
+void adjustReferences(struct Share* sharedObj, struct Env * env, uint32 va){
+
+    // ignore the reference of the env that created shared object
+    int32 referencesNumber = sharedObj->references - 1;
+    int32 referenced_id = env->env_id;
+
+    // there's previous references need to store their values
+    if(referencesNumber != 1){
+        int32* prevIds[referencesNumber-1];
+
+        for(int i=0; i<referencesNumber-1; i++)
+            prevIds[i] = sharedObj->referenced_ids[i];
+
+        sharedObj->referenced_ids = (int32 **)krealloc(sharedObj->referenced_ids, referencesNumber*sizeof(int32));
+
+        for(int i=0; i<referencesNumber-1; i++)
+            sharedObj->referenced_ids[i] = prevIds[i];
+
+        sharedObj->referenced_ids[referencesNumber - 1] = (int32*)referenced_id;
+
+    }else{
+        sharedObj->referenced_ids = (int32 **)kmalloc(referencesNumber*sizeof(int32));
+        sharedObj->referenced_ids[0] = (int32*)referenced_id;
+    }
+
+}
 int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #21] [4] SHARED MEMORY [KERNEL SIDE] - getSharedObject()
@@ -268,6 +317,9 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 	}
 	my_shared_object->references = my_shared_object->references + 1;
+	my_shared_object->refCounter += 1;
+
+	    adjustReferences(my_shared_object, myenv, (uint32) virtual_address);
 //	if (!lock_already_held) {
 //		release_spinlock(&AllShares.shareslock);
 //	}

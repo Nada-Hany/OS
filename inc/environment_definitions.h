@@ -108,7 +108,9 @@ struct Env {
 	int priority;					// Current priority
 	char prog_name[PROGNAMELEN];	// Program name (to print it via USER.cprintf in multitasking)
 	void* channel;					// Address of the channel that it's blocked (sleep) on it
-
+	// used in free env
+	    uint32** startVAs;
+	    int shared_object_no;
 	//================
 	/*ADDRESS SPACE*/
 	//================
