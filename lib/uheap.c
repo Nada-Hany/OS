@@ -17,7 +17,6 @@ void* sbrk(int increment)
 //=================================
 uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
 uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
-//uint32 current_start=0, previous_free_page=0;
 int get_page_index(uint32 va)
 {
 	return (va - (myEnv->env_rLimit + PAGE_SIZE)) / PAGE_SIZE;
@@ -45,9 +44,6 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 	 * 			if success ->start virtual address of allocation (uint32)
 	 * 			if no pages-> return 0
 	 * */
-//	if(previous_free_page > 0){
-//		start_va = current_start;
-//	}
 	//number of required pages
 
 	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
@@ -71,7 +67,6 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 		// go to next block of free pages
 		start_va += (consecutive_free_pages * PAGE_SIZE);
 	}
-//	current_start = final_va + num_of_pages;
 	return final_va;
 }
 void* malloc(uint32 size)
@@ -121,9 +116,6 @@ void free(void* virtual_address)
 		int num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
 		sys_free_user_mem(va,virtual_addresses_pages_num[get_page_index(va)]*PAGE_SIZE);
 		virtual_addresses_pages_num[get_page_index(va)]=0;
-//		if(va < current_start){
-//			previous_free_page++;
-//		}
 	}else{
 		panic("invalid address\n");
 	}
