@@ -17,16 +17,15 @@ void* sbrk(int increment)
 //=================================
 uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
 uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
-
 int get_page_index(uint32 va)
 {
 	return (va - (myEnv->env_rLimit + PAGE_SIZE)) / PAGE_SIZE;
 }
-int num_of_unmapped_pages(uint32 start_va)
+int num_of_unmapped_pages(uint32 start_va, uint32 pages_needed)
 {
 	int num = 0;
 	uint32 page_index = get_page_index(start_va);
-	while(start_va < USER_HEAP_MAX && (virtual_addresses_pages_num[page_index]==0))
+	while(start_va < USER_HEAP_MAX && (virtual_addresses_pages_num[page_index]==0) && num < pages_needed)
 	{
 		num = num + 1;
 		start_va = start_va + PAGE_SIZE;
@@ -45,7 +44,6 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 	 * 			if success ->start virtual address of allocation (uint32)
 	 * 			if no pages-> return 0
 	 * */
-
 	//number of required pages
 
 	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
@@ -61,7 +59,7 @@ uint32 FirstFit(uint32 start_va,uint32 size) {
 			continue;
 		}
 
-		int consecutive_free_pages = num_of_unmapped_pages(start_va);
+		int consecutive_free_pages = num_of_unmapped_pages(start_va, num_of_pages);
 		if (consecutive_free_pages >= num_of_pages) {
 			final_va = start_va;
 			break;
@@ -137,7 +135,6 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	//TODO: [PROJECT'24.MS2 - #18] [4] SHARED MEMORY [USER SIDE] - smalloc()
 	// Write your code here, remove the panic and write your code
 //	panic("smalloc() is not implemented yet...!!");
-
 	uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
 
 	if(va == 0)
