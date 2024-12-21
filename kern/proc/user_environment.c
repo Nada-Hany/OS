@@ -484,7 +484,6 @@ void env_start(void)
 					pages_alloc_in_WS_list[(wse->virtual_address-(e->env_rLimit+PAGE_SIZE))/PAGE_SIZE]=NULL;
 					pt_set_page_permissions(e->env_page_directory, wse->virtual_address,0,PERM_MARKED|PERM_PRESENT);
 					pf_remove_env_page(e,wse->virtual_address);
-					pd_clear_page_dir_entry(e->env_page_directory, wse->virtual_address);
 				}
 			}
 			if(LIST_SIZE(&(e->page_WS_list)) == 1)
@@ -500,23 +499,6 @@ void env_start(void)
 			kfree(wse);
 		}
 		// [3] free shared objects
-		uint32 * page_dir = e->env_page_directory;
-		for(int i=0;i<(1<<10);i++){
-			uint32* pt_ptr;
-			get_page_table(e->env_page_directory, i<<12, &pt_ptr);
-//			cprintf("pt %d\n", i);
-			if(pt_ptr!=0){
-				for(int j=0;j<(1<<10);j++){
-					if(pt_ptr[j]!=0){
-//						cprintf("page %d\n", j);
-						uint32 page = kheap_virtual_address(EXTRACT_ADDRESS(pt_ptr[j]));
-						freeSharedObject(page, (void*)page);
-//						cprintf("returned %d from freeshared\n", ret);
-					}
-				}
-			}
-		}
-		cprintf("after 4\n");
 		// [4] free semaphores
 
 		// [5] free page tables
@@ -546,7 +528,6 @@ void env_start(void)
 		/*(ALREADY DONE for you)*/
 		free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 		/*========================*/
-		cprintf("\n\n==================================================\n\n");
 	}
 
 //============================
@@ -672,7 +653,7 @@ void sched(void)
 	int intena;
 	struct Env *p = get_cpu_proc();
 	assert(p != NULL);
-	cprintf("IN SCHED FUNCTION \n");
+	//cprintf("IN SCHED FUNCTION \n");
 	/*To protect process Qs (or info of current process) in multi-CPU*/
 	if(!holding_spinlock(&ProcessQueues.qlock))
 		panic("sched: q.lock is not held by this CPU while it's expected to be. ");

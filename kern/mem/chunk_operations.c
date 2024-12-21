@@ -170,7 +170,7 @@ void* sys_sbrk(int numOfPages)
 			}
 
 	}
-	cprintf("\nsbrk_user will return here with num of page = %d \n" ,numOfPages);
+	//cprintf("\nsbrk_user will return here with num of page = %d \n" ,numOfPages);
 	return (void *)previous_segBreak;
 }
 
