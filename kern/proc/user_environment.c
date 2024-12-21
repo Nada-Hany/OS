@@ -557,7 +557,6 @@ void env_exit(void)
 {
 	struct Env* cur_env = get_cpu_proc();
 	assert(cur_env != NULL);
-	env_free(cur_env);
 	sched_exit_env(cur_env->env_id);
 	//2024: Replaced by context switch
 	//fos_scheduler();
