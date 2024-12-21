@@ -237,15 +237,15 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	struct Env* myenv = get_cpu_proc(); //The calling environment
 	struct Share* my_shared_object = get_share(ownerID, shareName);
 
-	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
-	if (!lock_already_held) {
-		acquire_spinlock(&AllShares.shareslock);
-	}
+//	bool lock_already_held = holding_spinlock(&AllShares.shareslock);
+//	if (!lock_already_held) {
+//		acquire_spinlock(&AllShares.shareslock);
+//	}
 
 	if(my_shared_object==NULL){
-		if (!lock_already_held) {
-						release_spinlock(&AllShares.shareslock);
-			}
+//		if (!lock_already_held) {
+//						release_spinlock(&AllShares.shareslock);
+//			}
 		return E_SHARED_MEM_NOT_EXISTS;
 
 	}
@@ -268,9 +268,9 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 	}
 	my_shared_object->references = my_shared_object->references + 1;
-	if (!lock_already_held) {
-		release_spinlock(&AllShares.shareslock);
-	}
+//	if (!lock_already_held) {
+//		release_spinlock(&AllShares.shareslock);
+//	}
 	return my_shared_object->ID;
 }
 

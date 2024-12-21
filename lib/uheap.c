@@ -17,59 +17,44 @@ void* sbrk(int increment)
 //=================================
 uint32 virtual_addresses_pages_num [NUM_OF_UHEAP_PAGES];
 uint32 slave_to_master[NUM_OF_UHEAP_PAGES];
+uint8 page_marked[NUM_OF_UHEAP_PAGES] = {0};
 
 int get_page_index(uint32 va)
 {
 	return (va - (myEnv->env_rLimit + PAGE_SIZE)) / PAGE_SIZE;
 }
-int num_of_unmapped_pages(uint32 start_va)
-{
-	int num = 0;
-	uint32 page_index = get_page_index(start_va);
-	while(start_va < USER_HEAP_MAX && (virtual_addresses_pages_num[page_index]==0))
-	{
-		num = num + 1;
-		start_va = start_va + PAGE_SIZE;
-		page_index = get_page_index(start_va);
-	}
-	return num;
+void mark_pages_allocated(uint32 start_index, uint32 num_pages) {
+    for (uint32 i = 0; i < num_pages; i++) {
+    	page_marked[start_index + i] = 1;
+    }
+    virtual_addresses_pages_num[start_index] = num_pages;
+}
+void mark_pages_free(uint32 start_index, uint32 num_pages) {
+    for (uint32 i = 0; i < num_pages; i++) {
+    	page_marked[start_index + i] = 0;
+    }
+    virtual_addresses_pages_num[start_index] = 0;
 }
 
-uint32 FirstFit(uint32 start_va,uint32 size) {
-	/*
-	 * this function apply FirstFit strategy for user virtual memory
-	 * Parameters:
-	 * 				start_va -> start address of search
-	 * 				size -> size in bytes not page or frame number
-	 * return:
-	 * 			if success ->start virtual address of allocation (uint32)
-	 * 			if no pages-> return 0
-	 * */
-
-	//number of required pages
-
-	uint32 num_of_pages=ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
-
-	uint32 final_va = 0;
-	while (start_va < USER_HEAP_MAX) {
-		uint32 page_index = get_page_index(start_va);
-
-		// If the current page is allocated, skip it
-		if (virtual_addresses_pages_num[page_index]!=0) {
-
-			start_va += virtual_addresses_pages_num[page_index] * PAGE_SIZE;
-			continue;
-		}
-
-		int consecutive_free_pages = num_of_unmapped_pages(start_va);
-		if (consecutive_free_pages >= num_of_pages) {
-			final_va = start_va;
-			break;
-		}
-		// go to next block of free pages
-		start_va += (consecutive_free_pages * PAGE_SIZE);
-	}
-	return final_va;
+uint32 FirstFit(uint32 num_pages){
+    uint32 consecutive_free = 0;
+    uint32 start_page = 0;
+    for (uint32 page = 0; page < NUM_OF_UHEAP_PAGES; page++) {
+        if (page_marked[page] == 0) {
+            if (consecutive_free == 0) {
+                start_page = page;
+            }
+            consecutive_free++;
+            uint32 va = (myEnv->env_rLimit + PAGE_SIZE) + (start_page * PAGE_SIZE);
+            uint32 end_va = va + (num_pages * PAGE_SIZE);
+            if (consecutive_free >= num_pages && end_va <= USER_HEAP_MAX) {
+                return va;
+            }
+        }
+        else
+            consecutive_free = 0;
+    }
+    return 0;
 }
 void* malloc(uint32 size)
 {
@@ -84,23 +69,22 @@ void* malloc(uint32 size)
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy
 	if(sys_isUHeapPlacementStrategyFIRSTFIT())
-	{
-		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
-		{
-			return alloc_block_FF(size);
-	    }
-		else
-		{
-			uint32 start_va = myEnv->env_rLimit + PAGE_SIZE;
-			uint32 final_va = FirstFit(start_va, size);
-			if(final_va==0)
-				return NULL;
-			sys_allocate_user_mem(final_va, size);
-			virtual_addresses_pages_num[get_page_index(final_va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-			return (void *) final_va;
-		}
-	}
-	return (void *) -1;
+	       	{
+	       		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+	       		{
+	       			return alloc_block_FF(size);
+	       	    }
+	    uint32 num_pages = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	    uint32 va = FirstFit(num_pages);
+
+	    if (va == 0) return NULL;
+
+	    sys_allocate_user_mem(va, size);
+	    mark_pages_allocated(get_page_index(va), num_pages);
+	    return (void*)va;
+	       	}
+	       	    return (void *) -1;
+
 }
 //=================================
 // [3] FREE SPACE FROM USER HEAP:
@@ -112,15 +96,17 @@ void free(void* virtual_address)
 	//panic("free() is not implemented yet...!!");
 	uint32 va = (uint32)virtual_address;
 
-	if(va>=USER_HEAP_START  && va<myEnv->env_segBreak){
-		free_block(virtual_address);
-	}else if(va>=myEnv->env_rLimit+PAGE_SIZE && va<USER_HEAP_MAX){
-		int num_of_pages = virtual_addresses_pages_num[get_page_index(va)];
-		sys_free_user_mem(va,virtual_addresses_pages_num[get_page_index(va)]*PAGE_SIZE);
-		virtual_addresses_pages_num[get_page_index(va)]=0;
-	}else{
-		panic("invalid address\n");
-	}
+	    if(va>=USER_HEAP_START  && va<myEnv->env_segBreak){
+	        		free_block(virtual_address);
+	        	}
+	    else if(va>=myEnv->env_rLimit+PAGE_SIZE && va<USER_HEAP_MAX){
+	        uint32 start_page = get_page_index(va);
+	        uint32 num_pages = virtual_addresses_pages_num[start_page];
+	        sys_free_user_mem(va, num_pages * PAGE_SIZE);
+	        mark_pages_free(start_page, num_pages);
+	    } else {
+	        panic("invalid address");
+	    }
 
 }
 
@@ -138,7 +124,8 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// Write your code here, remove the panic and write your code
 //	panic("smalloc() is not implemented yet...!!");
 
-	uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
+	uint32 num_pages = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	uint32 va = FirstFit(num_pages);
 
 	if(va == 0)
 		return NULL;
@@ -148,8 +135,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	if(check == E_SHARED_MEM_EXISTS || check == E_NO_SHARE)
 		return NULL;
 
-	virtual_addresses_pages_num[get_page_index(va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
-
+	mark_pages_allocated(get_page_index(va), num_pages);
 	slave_to_master[get_page_index(va)]=va;
 
 	return (void *) va;
@@ -170,8 +156,8 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 
 	        return NULL;
 	    }
-
-	    uint32 va = FirstFit(myEnv->env_rLimit + PAGE_SIZE, size);
+	    uint32 num_pages = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	    uint32 va = FirstFit(num_pages);
 	    if (va == 0) {
 
 	        return NULL;
@@ -185,7 +171,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName) {
 
 	    slave_to_master[get_page_index(va)]=ret;
 
-	    virtual_addresses_pages_num[get_page_index(va)]=(size/PAGE_SIZE) + ((size%PAGE_SIZE!=0)?1:0);
+	    mark_pages_allocated(get_page_index(va), num_pages);
 
 
 	return (void*)va;
@@ -215,7 +201,9 @@ void sfree(void* virtual_address)
 	uint32 Id = slave_to_master[get_page_index((uint32)virtual_address)] & 0x7FFFFFFF;
 	sys_freeSharedObject(Id, virtual_address);
 	uint32 va = (uint32)virtual_address;
-	virtual_addresses_pages_num[get_page_index(va)]=0;
+	uint32 page_index = get_page_index(va);
+	uint32 num_pages = virtual_addresses_pages_num[get_page_index(va)];
+	mark_pages_free(page_index, num_pages);
 
 }
 
