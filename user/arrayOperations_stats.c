@@ -87,7 +87,7 @@ int QSort(int *Elements,int NumOfElements, int startIndex, int finalIndex, int k
 {
 	if (startIndex >= finalIndex) return Elements[finalIndex];
 
-	int pvtIndex = RAND(startIndex, finalIndex) ;
+	int pvtIndex = RANDU(startIndex, finalIndex) ;
 	Swap(Elements, startIndex, pvtIndex);
 
 	int i = startIndex+1, j = finalIndex;
@@ -132,7 +132,7 @@ void ArrayStats(int *Elements, int NumOfElements, int64 *mean, int64 *var, int *
 		}
 	}
 
-	(*med) = KthElement(Elements, NumOfElements, NumOfElements/2);
+	(*med) = KthElement(Elements, NumOfElements, (NumOfElements+1)/2);
 
 	(*mean) /= NumOfElements;
 	(*var) = 0;

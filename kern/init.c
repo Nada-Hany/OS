@@ -81,7 +81,7 @@ void FOS_initialize()
 		initialize_kheap_dynamic_allocator(KERNEL_HEAP_START, PAGE_SIZE, KERNEL_HEAP_START + DYN_ALLOC_MAX_SIZE);
 #endif
 		//	page_check();
-		setPageReplacmentAlgorithmNchanceCLOCK();
+		setPageReplacmentAlgorithmNchanceCLOCK(1);
 		//setPageReplacmentAlgorithmLRU(PG_REP_LRU_TIME_APPROX);
 		//setPageReplacmentAlgorithmFIFO();
 		//setPageReplacmentAlgorithmLRU(PG_REP_LRU_LISTS_APPROX);
@@ -122,8 +122,8 @@ void FOS_initialize()
 		irq_clear_mask(4);
 		cprintf("*	IRQ4 (COM1): is Enabled\n");
 		//Enable Primary ATA Hard Disk Interrupt
-//		irq_clear_mask(14);
-//		cprintf("*	IRQ14 (Primary ATA Hard Disk): is Enabled\n");
+		//		irq_clear_mask(14);
+		//		cprintf("*	IRQ14 (Primary ATA Hard Disk): is Enabled\n");
 	}
 	cprintf("* 5) SCHEDULER & MULTI-TASKING:\n");
 	{
@@ -145,11 +145,105 @@ void FOS_initialize()
 	cprintf("********************************************************************\n");
 
 	// start the kernel command prompt.
-	autograde = 0;
+	autograde = 1;
 	while (1==1)
 	{
 		cprintf("\nWelcome to the FOS kernel command prompt!\n");
 		cprintf("Type 'help' for a list of commands.\n");
+		if (autograde)
+		{
+			/*CHECK THE FOLLOWING:
+			 * 1) time of each test
+			 * 2) "unhandled trap in" message
+			 */
+			cprintf("\nMS3 Automatic testing is STARTED...\n") ;
+
+			//TEST#1: FAULT HANDLER II [NTH CLOCK NORMAL] 	[10 sec]
+			{
+				char cmd0[BUFLEN] = "nclock 5 1";
+				char cmd1[BUFLEN] = "run tpr1 11";
+				char cmd2[BUFLEN] = "run tpr2 6";
+				char cmd3[BUFLEN] = "run tnclock1 11";
+				char cmdU[BUFLEN] = "run tnclock3 11";
+
+//				execute_command(cmd0);
+//				execute_command(cmdU);
+			}
+			//TEST#2: FAULT HANDLER II [NTH CLOCK MODIFIED] [10 sec]
+			{
+				char cmd0[BUFLEN] = "nclock 5 2";
+				char cmd1[BUFLEN] = "run tpr1 11";
+				char cmd2[BUFLEN] = "run tpr2 6";
+				char cmd3[BUFLEN] = "run tnclock2 11";
+
+//				execute_command(cmd0);
+//				execute_command(cmd3);
+			}
+
+			//TEST#3: SEMAPHORES	[30 sec]
+			{
+				char cmd1[BUFLEN] = "run tsem1 500";	//5 sec
+				char cmd2[BUFLEN] = "run tsem2 500";	//20 sec
+				char cmdU[BUFLEN] = "run tair 500";		//10 sec
+//				execute_command(cmd1);
+			}
+
+			//TEST#4: PRIORITY RR SCHEDULER
+			{
+				char cmd01[BUFLEN] = "schedPRIRR 10 40 1000";
+				char cmd03[BUFLEN] = "schedPRIRR 10 40 20";
+//				execute_command(cmd03);
+
+				char cmdU1_1[BUFLEN] = "tst priorityRR 0";	//52 sec
+				char cmdU2_1[BUFLEN] = "tst priorityRR 1";	//58 sec
+				char cmdU3_1[BUFLEN] = "tst priorityRR 2";	//90 sec
+//				execute_command(cmdU3_1);
+			}
+
+			//TEST#4: BONUSES
+			{
+				//[1] EXIT I
+				{
+//					char cmd0_1[BUFLEN] = "fifo";
+//					char cmd1_1[BUFLEN] = "run tef1 5";		//4s
+//					char cmd2_1[BUFLEN] = "run tef2 15";	//20s
+//					//					execute_command(cmd0_1);
+//					//					execute_command(cmd2_1);
+//
+//					char cmd0_2[BUFLEN] = "lru 2";
+//					char cmd1_2[BUFLEN] = "run tef1 5 3";	//6s
+//					char cmd2_2[BUFLEN] = "run tef2 15 5";	//25s
+//					//					execute_command(cmd0_2);
+//					//					execute_command(cmd2_2);
+				}
+				//[2] FREE SHARED OBJECT
+				{
+					char cmd1[BUFLEN] = "run tshr4 3000";
+					char cmd2[BUFLEN] = "run tshr5 3000";
+					//execute_command(cmd1);
+				}
+			}
+			//TEST#5: OVERALL SCENARIOS 	[3min]
+			{
+//				char cmd0_1[BUFLEN] = "fifo";
+//				char cmd0_2[BUFLEN] = "lru 2";
+//				execute_command(cmd0_1);
+//
+//				char cmd1[BUFLEN] = "run sc_MultipleApps 10000";		//45s
+//				char cmd2[BUFLEN] = "run sc_LEAK_NOLEAK 5000";			//55s
+//				char cmd3[BUFLEN] = "run sc_FIFO_LRUList 5000";			//35s
+//				execute_command(cmd1);
+//
+//				char cmd4_1[BUFLEN] = "schedBSD 64 5";
+//				char cmd4_2[BUFLEN] = "run sc_bsd_1 20 20";		//fifo	//1m20s
+//				char cmd5_2[BUFLEN] = "run sc_bsd_1 20 5 20";	//lru	//1m
+//				//				execute_command(cmd4_1);
+//				//				execute_command(cmd5_2);
+
+			}
+			cprintf("MS3 Automatic testing is ENDED\n") ;
+			autograde = 0;
+		}
 		get_into_prompt();
 	}
 }
@@ -272,7 +366,7 @@ void _panic_into_prompt(const char *file, int line, const char *fmt,...)
 	cprintf("\n");
 	va_end(ap);
 
-//	dead:
+	//	dead:
 	/* break into the fos scheduler */
 	//2013: Check if the panic occur when running an environment
 	struct Env* cur_env = get_cpu_proc();

@@ -41,7 +41,8 @@ _main(void)
 
 
 	cprintf("Step B completed successfully!!\n\n\n");
-	cprintf("\n%~Congratulations!! Test of freeSharedObjects [5] completed successfully!!\n\n\n");
+	//cprintf("\n%~Congratulations!! Test of freeSharedObjects [5] completed successfully!!\n\n\n");
+	atomic_cprintf("%~\nCongratulations!!... test is completed.\n");
 
 	return;
 }

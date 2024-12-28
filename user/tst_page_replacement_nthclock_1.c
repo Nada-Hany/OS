@@ -4,9 +4,9 @@
 
 #include <inc/lib.h>
 
-char arr[PAGE_SIZE*12];
-char* ptr = (char* )0x0801000 ;
-char* ptr2 = (char* )0x0804000 ;
+char __arr__[PAGE_SIZE*12];
+char* __ptr__ = (char* )0x0801000 ;
+char* __ptr2__ = (char* )0x0804000 ;
 uint32 expectedInitialVAs[11] = {
 		0x200000, 0x201000, 0x202000, 0x203000, 0x204000, 0x205000, 					//Unused
 		0x800000, 0x801000, 0x802000, 0x803000,											//Code & Data
@@ -18,11 +18,11 @@ uint32 expectedFinalVAs[11] = {
 		0x80a000, 0x804000, 0x80b000, 0x80c000,0x807000,0x800000,0x801000,0x808000,0x809000,0x803000,	//Code & Data
 } ;
 
-void fillPage(char* arr, int pageIdx, char val)
+void fillPage(char* __arr__, int pageIdx, char val)
 {
 	for (int i = pageIdx*PAGE_SIZE; i < (pageIdx+1)*PAGE_SIZE; ++i)
 	{
-		arr[i] = val;
+		__arr__[i] = val;
 	}
 }
 
@@ -45,27 +45,27 @@ void _main(void)
 	int usedDiskPages = sys_pf_calculate_allocated_pages();
 
 	//Reading (Not Modified)
-	char garbage1 = arr[PAGE_SIZE*11-1] ;
-	char garbage2 = arr[PAGE_SIZE*12-1] ;
+	char garbage1 = __arr__[PAGE_SIZE*11-1] ;
+	char garbage2 = __arr__[PAGE_SIZE*12-1] ;
 	char garbage4,garbage5;
 
 	//Writing (Modified)
 	int i ;
 	for (i = 0 ; i < PAGE_SIZE*10 ; i+=PAGE_SIZE/2)
 	{
-		arr[i] = 'A' ;
+		__arr__[i] = 'A' ;
 		/*2016: this BUGGY line is REMOVED el7! it overwrites the KERNEL CODE :( !!!*/
-		//*ptr = *ptr2 ;
+		//*__ptr__ = *__ptr2__ ;
 		/*==========================================================================*/
 		//always use pages at 0x801000 and 0x804000
-		garbage4 = *ptr ;
+		garbage4 = *__ptr__ ;
 		if (i % PAGE_SIZE == 0)
-			garbage5 = *ptr2 ;
+			garbage5 = *__ptr2__ ;
 
 //		if (((i/PAGE_SIZE) + 1) % 3 == 0)
 //		{
 //			cprintf("BEFORE FILL...\n");
-//			fillPage(arr, (i/PAGE_SIZE) - 2, 'A');
+//			fillPage(__arr__, (i/PAGE_SIZE) - 2, 'A');
 //			cprintf("AFTER FILL\n");
 //		}
 	}
@@ -78,10 +78,12 @@ void _main(void)
 		if (found != 1) panic("Page Nth clock algo failed.. trace it by printing WS before and after page fault");
 	}
 	{
-		if (garbage4 != *ptr) panic("test failed!");
-		if (garbage5 != *ptr2) panic("test failed!");
+		if (garbage4 != *__ptr__) panic("test failed!");
+		if (garbage5 != *__ptr2__) panic("test failed!");
 	}
 
-	cprintf("Congratulations!! test PAGE replacement [Nth clock Alg.] is completed successfully.\n");
+	//cprintf("Congratulations!! test PAGE replacement [Nth clock Alg.] is completed successfully.\n");
+	atomic_cprintf("%~\nCongratulations!!... test is completed.\n");
+
 	return;
 }

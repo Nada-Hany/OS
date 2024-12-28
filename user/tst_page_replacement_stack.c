@@ -30,7 +30,8 @@ void _main(void)
 		if( (freePages - (sys_calculate_free_frames() + sys_calculate_modified_frames())) != 0 ) panic("Extra memory are wrongly allocated... It's REplacement: expected that no extra frames are allocated");
 	}//consider tables of PF, disk pages
 
-	cprintf("Congratulations: stack pages created, modified and read is completed successfully\n\n");
+	//cprintf("Congratulations: stack pages created, modified and read is completed successfully\n\n");
+	atomic_cprintf("%~\nCongratulations!!... test is completed.\n");
 
 
 	return;

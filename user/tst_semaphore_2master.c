@@ -7,10 +7,17 @@ _main(void)
 {
 	int envID = sys_getenvid();
 	char line[256] ;
-	readline("Enter total number of customers: ", line) ;
-	int totalNumOfCusts = strtol(line, NULL, 10);
-	readline("Enter shop capacity: ", line) ;
-	int shopCapacity = strtol(line, NULL, 10);
+//	readline("Enter total number of customers: ", line) ;
+//	int totalNumOfCusts = strtol(line, NULL, 10);
+
+	int totalNumOfCusts = 100 ;
+	atomic_cprintf("Enter total number of customers: %d\n", totalNumOfCusts) ;
+
+//	readline("Enter shop capacity: ", line) ;
+//	int shopCapacity = strtol(line, NULL, 10);
+
+	int shopCapacity = 30;
+	atomic_cprintf("Enter shop capacity: %d\n", shopCapacity) ;
 
 	struct semaphore shopCapacitySem = create_semaphore("shopCapacity", shopCapacity);
 	struct semaphore dependSem = create_semaphore("depend", 0);
@@ -35,9 +42,10 @@ _main(void)
 	//wait a while to allow the slaves to finish printing their closing messages
 	env_sleep(10000);
 	if (sem2val == 0 && sem1val == shopCapacity)
-		cprintf("\nCongratulations!! Test of Semaphores [2] completed successfully!!\n\n\n");
+		//cprintf("\nCongratulations!! Test of Semaphores [2] completed successfully!!\n\n\n");
+		atomic_cprintf("%~\nCongratulations!!... test is completed.\n");
 	else
-		cprintf("\nError: wrong semaphore value... please review your semaphore code again...\n");
+		atomic_cprintf("\nError: wrong semaphore value... please review your semaphore code again...\n");
 
 	return;
 }

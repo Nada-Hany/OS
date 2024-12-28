@@ -170,7 +170,8 @@ _main(void)
 	if (is_correct)	eval+=25;
 	is_correct = 1;
 
-	cprintf("\n%~Test of freeSharedObjects [4] completed. Eval = %d%%\n\n", eval);
+	//cprintf("\n%~Test of freeSharedObjects [4] completed. Eval = %d%%\n\n", eval);
+	cprintf("%~\neval = %d\n", eval);
 
 	return;
 }

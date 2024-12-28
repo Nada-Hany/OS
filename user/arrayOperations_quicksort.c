@@ -64,7 +64,7 @@ void QuickSort(int *Elements, int NumOfElements)
 void QSort(int *Elements,int NumOfElements, int startIndex, int finalIndex)
 {
 	if (startIndex >= finalIndex) return;
-	int pvtIndex = RAND(startIndex, finalIndex) ;
+	int pvtIndex = RANDU(startIndex, finalIndex) ;
 	Swap(Elements, startIndex, pvtIndex);
 
 	int i = startIndex+1, j = finalIndex;

@@ -5,6 +5,7 @@
 #include <inc/x86.h>
 #include <inc/assert.h>
 #include <inc/queue.h>
+#include <inc/dynamic_allocator.h>
 
 #include <kern/proc/user_environment.h>
 #include "../trap/syscall.h"
@@ -164,6 +165,18 @@ void sys_utilities(char* utilityName, int value)
 		assert(env->env_id == envID) ;
 		env_set_nice(env, value);
 	}
+	else if (strncmp(utilityName, "__PRIRRSetPriority@", strlen("__PRIRRSetPriority@")) == 0)
+	{
+		int number_of_tokens;
+		//allocate array of char * of size MAX_ARGUMENTS = 16 found in string.h
+		char *tokens[MAX_ARGUMENTS];
+		strsplit(utilityName, "@", tokens, &number_of_tokens) ;
+		int envID = strtol(tokens[1], NULL, 10);
+		struct Env* env = NULL ;
+		envid2env(envID, &env, 0);
+		assert(env->env_id == envID) ;
+		env_set_priority(envID, value);
+	}
 	else if (strncmp(utilityName, "__CheckExitOrder@", strlen("__CheckExitOrder@")) == 0)
 	{
 		int* numOfInstances = (int*) value ;
@@ -218,18 +231,45 @@ void sys_utilities(char* utilityName, int value)
 		release_spinlock(&ProcessQueues.qlock);
 		if (*numOfInstances != 0 || success == 0)
 		{
-			cprintf("###########################################\n");
-			cprintf("%s: check exit order is FAILED\n", progName);
-			cprintf("###########################################\n");
+			cons_lock();
+			{
+				cprintf("###########################################\n");
+				cprintf("%s: check exit order is FAILED\n", progName);
+				cprintf("###########################################\n");
+			}
+			cons_unlock();
 			*numOfInstances = 0; //to indicate the failure of test
 		}
 		else
 		{
-			cprintf("####################################################\n");
-			cprintf("%s: check exit order is SUCCEEDED\n", progName);
-			cprintf("####################################################\n");
+			cons_lock();
+			{
+				cprintf("####################################################\n");
+				cprintf("%s: check exit order is SUCCEEDED\n", progName);
+				cprintf("####################################################\n");
+			}
+			cons_unlock();
 			*numOfInstances = 1; //to indicate the success of test
 		}
+	}
+	else if (strncmp(utilityName, "__NthClkRepl@", strlen("__NthClkRepl@")) == 0)
+	{
+		int number_of_tokens;
+		//allocate array of char * of size MAX_ARGUMENTS = 16 found in string.h
+		char *tokens[MAX_ARGUMENTS];
+		strsplit(utilityName, "@", tokens, &number_of_tokens) ;
+		int type = strtol(tokens[1], NULL, 10);
+		int N = value;
+		if (type == 2)
+			N *= -1;
+		setPageReplacmentAlgorithmNchanceCLOCK(N);
+		cons_lock();
+		{
+			cprintf("\n*********************************************************"
+					"\nPAGE REPLACEMENT IS SET TO Nth Clock type = %d (N = %d)."
+					"\n*********************************************************\n", type, N);
+		}
+		cons_unlock();
 	}
 	else if (strcmp(utilityName, "__Sleep__") == 0)
 	{
@@ -289,6 +329,52 @@ void sys_utilities(char* utilityName, int value)
 		uint32* lockOwnerID = (uint32*) value ;
 		*lockOwnerID =__tstslplk__.pid;
 	}
+	else if (strcmp(utilityName, "__GetConsLockedCnt__") == 0)
+	{
+		uint32* consLockCnt = (uint32*) value ;
+		*consLockCnt = queue_size(&(conslock.chan.queue));
+	}
+	else if (strcmp(utilityName, "__tmpReleaseConsLock__") == 0)
+	{
+		if (CONS_LCK_METHOD == LCK_SLEEP)
+		{
+			conslock.pid = get_cpu_proc()->env_id;
+			cons_unlock();
+		}
+	}
+	else if (strcmp(utilityName, "__getKernelSBreak__") == 0)
+	{
+		uint32* ksbrk = (uint32*) value ;
+		*ksbrk = (uint32)sbrk(0);
+	}
+	else if (strcmp(utilityName, "__changeInterruptStatus__") == 0)
+	{
+		if (value == 0)
+		{
+			kclock_stop();
+			cli();
+			struct Env * p = get_cpu_proc();
+			if (p == NULL)
+			{
+				panic("cons_lock: no running process to block");
+			}
+			p->env_tf->tf_eflags &= ~FL_IF ;
+			//cprintf("\nINTERRUPT WILL BE DISABLED\n");
+		}
+		else if (value == 1)
+		{
+			kclock_stop();
+			cli();
+			struct Env * p = get_cpu_proc();
+			if (p == NULL)
+			{
+				panic("cons_unlock: no running process to block");
+			}
+			p->env_tf->tf_eflags |= FL_IF ;
+			//cprintf("\nINTERRUPT WILL BE ENABLED\n");
+		}
+	}
+
 	if ((int)value < 0)
 	{
 		if (strcmp(utilityName, "__ReplStrat__") == 0)
@@ -302,6 +388,10 @@ void sys_utilities(char* utilityName, int value)
 			case -PG_REP_LRU_LISTS_APPROX:
 				cprintf("\n*************************************\nPAGE REPLACEMENT IS SET TO LRU LISTS.\n*************************************\n");
 				setPageReplacmentAlgorithmLRU(PG_REP_LRU_LISTS_APPROX);
+				break;
+			case -PG_REP_NchanceCLOCK:
+				cprintf("\n*************************************\nPAGE REPLACEMENT IS SET TO Nth Clock Normal (N=1).\n*************************************\n");
+				setPageReplacmentAlgorithmNchanceCLOCK(1);
 				break;
 			default:
 				break;

@@ -26,9 +26,10 @@ _main(void)
 	int sem1val = semaphore_count(cs1);
 	int sem2val = semaphore_count(depend1);
 	if (sem2val == 0 && sem1val == 1)
-		cprintf("Congratulations!! Test of Semaphores [1] completed successfully!!\n\n\n");
+		//cprintf("Congratulations!! Test of Semaphores [1] completed successfully!!\n\n\n");
+		atomic_cprintf("%~\nCongratulations!!... test is completed.\n");
 	else
-		panic("Error: wrong semaphore value... please review your semaphore code again! Expected = %d, %d, Actual = %d, %d", 1, 0, sem1val, sem2val);
+		atomic_cprintf("Error: wrong semaphore value... please review your semaphore code again! Expected = %d, %d, Actual = %d, %d", 1, 0, sem1val, sem2val);
 
 	return;
 }

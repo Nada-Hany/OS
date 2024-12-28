@@ -2,10 +2,12 @@
 // Slave program: enter the shop, leave it and signal the master program
 
 #include <inc/lib.h>
+extern volatile bool printStats;
 
 void
 _main(void)
 {
+	printStats = 0;
 	int id = sys_getenvindex();
 
 	int32 parentenvID = sys_getparentenvid();
@@ -15,12 +17,12 @@ _main(void)
 
 	wait_semaphore(shopCapacitySem);
 	{
-		cprintf("Cust %d: inside the shop\n", id) ;
-		env_sleep(1000) ;
+		atomic_cprintf("Cust %d: inside the shop\n", id) ;
+		env_sleep(RANDU(100,1000)) ;
 	}
 	signal_semaphore(shopCapacitySem);
 
-	cprintf("Cust %d: exit the shop\n", id);
+	atomic_cprintf("Cust %d: exit the shop\n", id);
 	signal_semaphore(dependSem);
 	return;
 }

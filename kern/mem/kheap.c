@@ -113,7 +113,7 @@ void *sbrk(int numOfPages)
 			va = va + PAGE_SIZE;
 		}
 	}
-	//cprintf("\n kernel sbrk called with number of pages = %d \n", numOfPages);
+//	cprintf("\n kernel sbrk called with number of pages = %d \n", numOfPages);
 	return (void *)previous_segBreak;
 	// MS2: COMMENT THIS LINE BEFORE START CODING==========
 	// return (void*)-1 ;
@@ -518,7 +518,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		{
 			// cprintf("krealloc: reallocating a block to page section \n");
 			if (free_frames < new_pages)
-				return virtual_address;
+				return NULL;
 
 			new_address = kmalloc(new_size);
 

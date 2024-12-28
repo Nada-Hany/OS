@@ -11,7 +11,7 @@ _main(void)
 	struct semaphore cs1 = get_semaphore(parentenvID, "cs1");
 	struct semaphore depend1 = get_semaphore(parentenvID, "depend1");
 
-	cprintf("%d: before the critical section\n", id);
+	atomic_cprintf("%d: before the critical section\n", id);
 	wait_semaphore(cs1);
 	{
 		cprintf("%d: inside the critical section\n", id) ;
@@ -22,7 +22,7 @@ _main(void)
 		env_sleep(1000) ;
 	}
 	signal_semaphore(cs1);
-	cprintf("%d: after the critical section\n", id);
+	atomic_cprintf("%d: after the critical section\n", id);
 
 	signal_semaphore(depend1);
 	return;

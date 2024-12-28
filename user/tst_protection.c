@@ -32,6 +32,7 @@ _main(void)
 
 	while (gettst() != numOfSlaves) ;
 
-	cprintf("%~\nCongratulations... test protection is run successfully\n");
+	//cprintf("%~\nCongratulations... test protection is run successfully\n");
+	cprintf("[#MS2EVAL#]Congratulations!!... test is completed.");
 
 }

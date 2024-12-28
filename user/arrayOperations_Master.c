@@ -126,7 +126,7 @@ _main(void)
 //	int middle = (NumOfElements-1)/2;
 //	if (NumOfElements % 2 != 0)
 //		middle--;
-	int middle = NumOfElements/2 - 1; /*-1 to make it ZERO-Based*/
+	int middle = (NumOfElements+1)/2 - 1; /*-1 to make it ZERO-Based*/
 
 	int correctMax = quicksortedArr[last];
 	int correctMed = quicksortedArr[middle];

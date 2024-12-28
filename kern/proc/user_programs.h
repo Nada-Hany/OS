@@ -131,12 +131,45 @@ DECLARE_START_OF(tst_chan_one_master);
 DECLARE_START_OF(tst_chan_one_slave);
 DECLARE_START_OF(mergesort_static);
 
-DECLARE_START_OF(tst_protection);
-DECLARE_START_OF(tst_protection_slave1);
-
 DECLARE_START_OF(tst_page_replacement_alloc);
 DECLARE_START_OF(tst_page_replacement_nthclock_1);
 DECLARE_START_OF(tst_page_replacement_nthclock_2);
 DECLARE_START_OF(tst_page_replacement_stack);
 
+/*2024 UNSEEN TESTS*/
+DECLARE_START_OF(tst_sleeplock_master);
+DECLARE_START_OF(tst_sleeplock_slave);
+DECLARE_START_OF(tst_protection);
+DECLARE_START_OF(tst_protection_slave1);
+DECLARE_START_OF(tst_sbrk);
+DECLARE_START_OF(tst_page_replacement_nthclock_3);
+DECLARE_START_OF(priRR_fib_create);
+DECLARE_START_OF(priRR_fib_small);
+DECLARE_START_OF(priRR_fib);
+DECLARE_START_OF(priRR_fib_pri4);
+DECLARE_START_OF(priRR_fib_pri8);
+DECLARE_START_OF(sc_priRR_1);
+DECLARE_START_OF(sc_priRR_2);
+DECLARE_START_OF(sc_arrayOperations);
+DECLARE_START_OF(sc_arrayOperations_slave);
+DECLARE_START_OF(arrayOperations_mergesort_static);
+DECLARE_START_OF(sc_NthClk_Norm_vs_Mod);
+DECLARE_START_OF(sc_air);
+DECLARE_START_OF(sc_qs_noleak) ;
+DECLARE_START_OF(sc_qs_leakage) ;
+DECLARE_START_OF(sc_qs_leakage_small) ;
+DECLARE_START_OF(sc_ms_leak);
+DECLARE_START_OF(sc_ms_leak_small);
+DECLARE_START_OF(sc_ms_noleak);
+DECLARE_START_OF(sc_ms_noleak_small);
+DECLARE_START_OF(sc_fact_recursive);
+DECLARE_START_OF(sc_fib_recursive);
+DECLARE_START_OF(sc_fib_memomize);
+DECLARE_START_OF(sc_fib_loop);
+DECLARE_START_OF(sc_matrix_operations);
+DECLARE_START_OF(sc_matrix_operations_small);
+DECLARE_START_OF(sc_MultipleApps);
+DECLARE_START_OF(sc_helloWorld);
+DECLARE_START_OF(sc_fos_add);
+DECLARE_START_OF(sc_ms_static);
 #endif /* KERN_USER_PROGRAMS_H_ */

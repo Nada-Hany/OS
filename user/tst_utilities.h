@@ -30,4 +30,5 @@ int check_block(void* va, void* expectedVA, uint32 expectedSize, uint8 expectedF
 	return 1;
 }
 
+
 #endif /* USER_TST_UTILITIES_H_ */
